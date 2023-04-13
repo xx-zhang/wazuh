@@ -249,7 +249,7 @@ static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 31);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_package_save2_fail() {
@@ -365,7 +365,7 @@ static void wdb_syscollector_package_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_hotfix_save2_fail(void) {
@@ -408,7 +408,7 @@ static void wdb_syscollector_hotfix_save2_success(void) {
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_port_save2_fail(void) {
@@ -511,7 +511,7 @@ static void wdb_syscollector_port_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 15);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_netproto_save2_fail(void) {
@@ -576,7 +576,7 @@ static void wdb_syscollector_netproto_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_netaddr_save2_fail(void) {
@@ -642,7 +642,7 @@ static void wdb_syscollector_netaddr_save2_success(cJSON *attribute) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
 }
 
@@ -750,7 +750,7 @@ static void wdb_syscollector_netinfo_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_hwinfo_save2_fail(void) {
@@ -790,7 +790,7 @@ static void wdb_syscollector_hwinfo_save2_success(cJSON *attribute) {
 
     will_return(__wrap_wdb_begin2, 0);
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -823,7 +823,7 @@ static void wdb_syscollector_hwinfo_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 10);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 }
 
 static void wdb_syscollector_osinfo_save2_fail(void) {
@@ -943,7 +943,7 @@ void test_wdb_netinfo_insert_default_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -1017,7 +1017,7 @@ void test_wdb_netinfo_insert_sql_constraint_fail(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
 
    // expect_sqlite3_step_call(SQLITE_CONSTRAINT);
-    will_return(__wrap_wdb_step_non_select, SQLITE_CONSTRAINT);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_errmsg, "DUPLICATE");
     will_return(__wrap_sqlite3_errmsg, "DUPLICATE");
     expect_string(__wrap__merror, formatted_msg, "SQLite: DUPLICATE");
@@ -1090,7 +1090,7 @@ void test_wdb_netinfo_insert_sql_constraint_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_CONSTRAINT);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_errmsg, "UNIQUE");
     will_return(__wrap_sqlite3_errmsg, "UNIQUE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: UNIQUE");
@@ -1163,7 +1163,7 @@ void test_wdb_netinfo_insert_sql_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_netinfo_insert(data, "scan_id", "scan_time", "name", "adapter", "type", "state", 1, "mac", 2, 3, 4, 5, 6, 7, 8, 9, "checksum", "item_id", false);
     assert_int_equal(output, 0);
@@ -1214,7 +1214,7 @@ void test_wdb_netproto_insert_default_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -1255,7 +1255,7 @@ void test_wdb_netproto_insert_sql_constraint_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_CONSTRAINT);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_errmsg, "DUPLICATED");
     will_return(__wrap_sqlite3_errmsg, "DUPLICATED");
     expect_string(__wrap__merror, formatted_msg, "SQLite: DUPLICATED");
@@ -1297,7 +1297,7 @@ void test_wdb_netproto_insert_sql_constraint_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_CONSTRAINT);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_errmsg, "UNIQUE");
     will_return(__wrap_sqlite3_errmsg, "UNIQUE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: UNIQUE");
@@ -1339,7 +1339,7 @@ void test_wdb_netproto_insert_sql_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_netproto_insert(data, "scan_id", "iface", WDB_NETADDR_IPV4, "gateway", "dhcp", 6, "checksum", "item_id", false);
     assert_int_equal(output, 0);
@@ -1402,7 +1402,7 @@ void test_wdb_netaddr_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_netaddr_save(data, "scan_id", "iface", 1, "address", "netmask", "broadcast", "checksum", "item_id", true);
     assert_int_equal(output, 0);
@@ -1451,7 +1451,7 @@ void test_wdb_netaddr_insert_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -1495,7 +1495,7 @@ void test_wdb_netinfo_delete_sys_netiface_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_netiface' table: ERROR");
 
@@ -1513,7 +1513,7 @@ void test_wdb_netinfo_delete_sys_netproto_cache_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netinfo_delete(): cannot cache statement");
 
@@ -1531,14 +1531,14 @@ void test_wdb_netinfo_delete_sys_netproto_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_netproto' table: ERROR");
 
@@ -1556,14 +1556,14 @@ void test_wdb_netinfo_delete_sys_netaddr_cache_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netinfo_delete(): cannot cache statement");
@@ -1582,20 +1582,20 @@ void test_wdb_netinfo_delete_sys_netaddr_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_netaddr' table: ERROR");
 
@@ -1613,20 +1613,20 @@ void test_wdb_netinfo_delete_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_netinfo_delete(data, "scan_id");
     assert_int_equal(output, 0);
@@ -1666,7 +1666,7 @@ void test_wdb_hotfix_delete_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_hotfixes' table: ERROR");
 
@@ -1683,7 +1683,7 @@ void test_wdb_hotfix_delete_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_hotfix_delete(data, "scan_id");
     assert_int_equal(output, 0);
@@ -1730,7 +1730,7 @@ void test_wdb_osinfo_save_retrieve_osinfo_type_triaged_fail(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -1794,7 +1794,7 @@ void test_wdb_osinfo_save_retrieve_osinfo_type_triaged_fail(void ** state) {
     expect_any(__wrap_sqlite3_bind_int, value);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                              "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
@@ -1819,7 +1819,7 @@ void test_wdb_osinfo_save_retrieve_osinfo_type_reference_fail(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -1883,7 +1883,7 @@ void test_wdb_osinfo_save_retrieve_osinfo_type_reference_fail(void ** state) {
     expect_any(__wrap_sqlite3_bind_int, value);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                              "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
@@ -1907,7 +1907,7 @@ void test_wdb_osinfo_save_retrieve_osinfo_ok(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -1971,7 +1971,7 @@ void test_wdb_osinfo_save_retrieve_osinfo_ok(void ** state) {
     expect_any(__wrap_sqlite3_bind_int, value);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                              "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
@@ -2019,7 +2019,7 @@ void test_wdb_osinfo_save_sql_fail(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_osinfo' table: ERROR");
 
@@ -2045,7 +2045,7 @@ void test_wdb_osinfo_save_insert_fail(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_insert(): cannot cache statement");
@@ -2141,7 +2141,7 @@ void test_wdb_osinfo_insert_sql_fail(void ** state) {
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -2238,7 +2238,7 @@ void test_wdb_package_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_package_save(data, "scan_id", "scan_time", "format", "name", "priority", "section", -1, "vendor", "install_time", "version", "architecture", "multiarch", "source", "description", "location", "checksum", "item_id", false);
     assert_int_equal(output, 0);
@@ -2316,7 +2316,7 @@ void test_wdb_package_insert_default_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -2385,7 +2385,7 @@ void test_wdb_package_insert_sql_constraint_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_CONSTRAINT);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_errmsg, "DUPLICATED");
     will_return(__wrap_sqlite3_errmsg, "DUPLICATED");
     expect_string(__wrap__merror, formatted_msg, "SQLite: DUPLICATED");
@@ -2454,7 +2454,7 @@ void test_wdb_package_insert_sql_constraint_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_CONSTRAINT);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_CONSTRAINT);
     will_return(__wrap_sqlite3_errmsg, "UNIQUE");
     will_return(__wrap_sqlite3_errmsg, "UNIQUE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: UNIQUE");
@@ -2522,7 +2522,7 @@ void test_wdb_package_insert_sql_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_package_insert(data, "scan_id", "scan_time", "format", "name", "priority", "section", 0, "vendor", "install_time", "version", "architecture", "multiarch", "source", "description", "location", 0, "checksum", "item_id", false);
     assert_int_equal(output, 0);
@@ -2574,7 +2574,7 @@ void test_wdb_hotfix_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_hotfix_save(data, "scan_id", "scan_time", "hotfix", "checksum", false);
     assert_int_equal(output, 0);
@@ -2612,7 +2612,7 @@ void test_wdb_package_update_sql_fail(void **state) {
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, 0);
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_select, 0);
+    will_return(__wrap_wdb_step_without_rollback, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
@@ -2639,7 +2639,7 @@ void test_wdb_package_update_loop_cache_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_select, SQLITE_ROW);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "cpe");
     expect_value(__wrap_sqlite3_column_text, iCol, 1);
@@ -2675,7 +2675,7 @@ void test_wdb_package_update_loop_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_select, SQLITE_ROW);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "cpe");
     expect_value(__wrap_sqlite3_column_text, iCol, 1);
@@ -2723,7 +2723,7 @@ void test_wdb_package_update_loop_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "arch");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Unable to update the 'sys_programs' table: ERROR");
@@ -2743,7 +2743,7 @@ void test_wdb_package_update_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_select, SQLITE_ROW);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "cpe");
     expect_value(__wrap_sqlite3_column_text, iCol, 1);
@@ -2791,8 +2791,8 @@ void test_wdb_package_update_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "arch");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
-    will_return(__wrap_wdb_step_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_package_update(data, "scan_id");
     assert_int_equal(output, 0);
@@ -2835,7 +2835,7 @@ void test_wdb_package_delete_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_programs' table: ERROR");
 
@@ -2854,7 +2854,7 @@ void test_wdb_package_delete_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_package_delete(data, "scan_id");
     assert_int_equal(output, 0);
@@ -2893,7 +2893,7 @@ void test_wdb_hardware_save_sql_fail(void **state) {
     will_return(__wrap_wdb_begin2, 0);
     will_return(__wrap_wdb_stmt_cache, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_hwinfo' table: ERROR");
 
@@ -2908,7 +2908,7 @@ void test_wdb_hardware_save_insert_fail(void **state) {
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, 0);
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_hardware_insert(): cannot cache statement");
@@ -2924,7 +2924,7 @@ void test_wdb_hardware_save_success(void **state) {
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, 0);
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -2953,7 +2953,7 @@ void test_wdb_hardware_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_hardware_save(data, "scan_id", "scan_time", "serial", "cpu_name", -1, -1, 0, 0, -1, "checksum", false);
     assert_int_equal(output, 0);
@@ -3008,7 +3008,7 @@ void test_wdb_hardware_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -3095,7 +3095,7 @@ void test_wdb_port_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 15);
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_port_save(data, "scan_id", "scan_time", "protocol", "local_ip", 541, "remote_ip", 541, 10, 10, 5294967296, "state", 32545, "process", "checksum", "item_id", false);
     assert_int_equal(output, 0);
@@ -3161,7 +3161,7 @@ void test_wdb_port_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "item_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -3206,7 +3206,7 @@ void test_wdb_port_delete_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_ports' table: ERROR");
 
@@ -3226,7 +3226,7 @@ void test_wdb_port_delete_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_port_delete(data, "scan_id");
     assert_int_equal(output, 0);
@@ -3359,7 +3359,7 @@ void test_wdb_process_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 31);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_process_save(data, "scan_id", "scan_time", 1, "name", "state", 1, 1, 1, "cmd", "argvs", "euser", "ruser", "suser", "egroup", "rgroup", "sgroup", "fgroup", 1, 1, 1, 1, 1, 1, 5294967296, 1, 1, 1, 1, 1, 1, "checksum", false);
     assert_int_equal(output, 0);
@@ -3450,7 +3450,7 @@ void test_wdb_process_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
@@ -3495,7 +3495,7 @@ void test_wdb_process_delete_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, 1);
+    will_return(__wrap_wdb_step_without_rollback, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_processes' table: ERROR");
 
@@ -3515,7 +3515,7 @@ void test_wdb_process_delete_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     output = wdb_process_delete(data, "scan_id");
     assert_int_equal(output, 0);
@@ -3877,7 +3877,7 @@ void test_wdb_syscollector_save2_osinfo_success(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -3941,7 +3941,7 @@ void test_wdb_syscollector_save2_osinfo_success(void ** state) {
     expect_any(__wrap_sqlite3_bind_int, value);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
+    will_return(__wrap_wdb_step_without_rollback, SQLITE_DONE);
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -4362,7 +4362,7 @@ void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) 
     configure_sqlite3_bind_text(17, test_netinfo.checksum);
     configure_sqlite3_bind_text(18, test_netinfo.item_id);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_netproto_insert
@@ -4378,7 +4378,7 @@ void configure_wdb_netproto_insert(netproto_object test_netproto, int sqlite_cod
     configure_sqlite3_bind_text(7, test_netproto.checksum);
     configure_sqlite3_bind_text(8, test_netproto.item_id);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_netaddr_insert
@@ -4394,7 +4394,7 @@ void configure_wdb_netaddr_insert(netaddr_object test_netaddr, int sqlite_code) 
     configure_sqlite3_bind_text(7, test_netaddr.checksum);
     configure_sqlite3_bind_text(8, test_netaddr.item_id);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_osinfo_insert
@@ -4422,7 +4422,7 @@ void configure_wdb_osinfo_insert(osinfo_object test_osinfo, int sqlite_code) {
     configure_sqlite3_bind_text(19, test_osinfo.reference);
     configure_sqlite3_bind_int(20, test_osinfo.triaged, ALLOW_ZERO);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_package_insert
@@ -4448,7 +4448,7 @@ void configure_wdb_package_insert(package_object test_package, int sqlite_code) 
     configure_sqlite3_bind_text(17, test_package.checksum);
     configure_sqlite3_bind_text(18, test_package.item_id);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_hotfix_insert
@@ -4460,7 +4460,7 @@ void configure_wdb_hotfix_insert(hotfix_object test_hotfix, int sqlite_code) {
     configure_sqlite3_bind_text(3, test_hotfix.hotfix);
     configure_sqlite3_bind_text(4, test_hotfix.checksum);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_hardware_insert
@@ -4478,7 +4478,7 @@ void configure_wdb_hardware_insert(hardware_object test_hardware, int sqlite_cod
     configure_sqlite3_bind_int(9, test_hardware.ram_usage, NOT_ALLOW_ZERO);
     configure_sqlite3_bind_text(10, test_hardware.checksum);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_port_insert
@@ -4501,7 +4501,7 @@ void configure_wdb_port_insert(port_object test_port, int sqlite_code) {
     configure_sqlite3_bind_text(14, test_port.checksum);
     configure_sqlite3_bind_text(15, test_port.item_id);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 // wdb_process_insert
@@ -4540,7 +4540,7 @@ void configure_wdb_process_insert(process_object test_process, int sqlite_code) 
     configure_sqlite3_bind_int(30, test_process.processor, ALLOW_ZERO);
     configure_sqlite3_bind_text(31, test_process.checksum);
 
-    will_return(__wrap_wdb_step_non_select, sqlite_code);
+    will_return(__wrap_wdb_step_without_rollback, sqlite_code);
 }
 
 /* tests */
