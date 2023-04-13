@@ -27,6 +27,15 @@ CPMAddPackage(
         GIT_SHALLOW TRUE
 )
 
+add_compile_definitions ( ONLY_C_LOCALE=1 )
+
+CPMAddPackage(
+  NAME pugixml
+  GITHUB_REPOSITORY zeux/pugixml
+  GIT_TAG v1.12.1
+  VERSION 1.12.1
+)
+
 add_library(hlp_parsec INTERFACE)
 target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parsec/include/)
 target_link_libraries(hlp_parsec INTERFACE base)

@@ -7,6 +7,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <yaml-cpp/yaml.h>
+#include <nlohmann/json.hpp>
 
 // #TODO Adds a thread-safe mechanism (?)
 // #TODO Adds test
@@ -51,9 +52,51 @@ rapidjson::Value parse_scalar(const YAML::Node& node,
     return v;
 }
 
-YAML::Node parse_scalar(const rapidjson::Value& node)
+// YAML::Node parse_scalar(const rapidjson::Value& node)
+// {
+//     YAML::Node n;
+//     if (node.IsString())
+//     {
+//         n = node.GetString();
+//     }
+//     else if (node.IsInt())
+//     {
+//         n = node.GetInt();
+//     }
+//     else if (node.IsDouble())
+//     {
+//         n = node.GetDouble();
+//     }
+//     else if (node.IsBool())
+//     {
+//         n = node.GetBool();
+//     }
+//     else
+//     {
+//         n = YAML::Node();
+//     }
+
+//     return n;
+// }
+
+YAML::Node parse_scalar(const nlohmann::json::va& node)
 {
     YAML::Node n;
+    node->
+    switch (t)
+    {
+        case nlohmann::json::value_t::null: return Type::Null;
+        case nlohmann::json::value_t::object: return Type::Object;
+        case nlohmann::json::value_t::array: return Type::Array;
+        case nlohmann::json::value_t::string: return Type::String;
+        case nlohmann::json::value_t::number_integer:
+        case nlohmann::json::value_t::number_unsigned:
+        case nlohmann::json::value_t::number_float: return Type::Number;
+        case nlohmann::json::value_t::boolean: return Type::Boolean;
+        default: throw std::runtime_error("Unknown nlohmann::json::value_t");
+    }
+
+
     if (node.IsString())
     {
         n = node.GetString();

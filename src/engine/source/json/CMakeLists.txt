@@ -12,6 +12,13 @@ CPMAddPackage(
     DOWNLOAD_ONLY YES
 )
 
+CPMAddPackage(
+    NAME nlohmann_json
+    GITHUB_REPOSITORY nlohmann/json
+    GIT_TAG v3.11.2
+    DOWNLOAD_ONLY YES
+)
+
 # ###################################################################################################
 # Sources - Includes
 # ###################################################################################################
@@ -24,4 +31,5 @@ target_link_libraries(json fmt base)
 target_include_directories(json PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${rapidjson_SOURCE_DIR}/include
+    ${nlohmann_json_SOURCE_DIR}/include
 )

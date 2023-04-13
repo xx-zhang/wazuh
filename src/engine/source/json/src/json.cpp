@@ -9,6 +9,7 @@
 #include <fmt/format.h>
 #include <logging/logging.hpp>
 
+#ifdef JSON_USE_RAPIDJSON
 namespace
 {
 constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path \"{}\"";
@@ -1128,3 +1129,4 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
 }
 
 } // namespace json
+#endif

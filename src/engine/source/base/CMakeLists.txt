@@ -68,6 +68,13 @@ CPMAddPackage(
     DOWNLOAD_ONLY YES
     )
 
+CPMAddPackage(
+    NAME nlohmann_json
+    GITHUB_REPOSITORY nlohmann/json
+    GIT_TAG v3.11.2
+    DOWNLOAD_ONLY YES
+    )
+
 add_library(base STATIC
     logging/logging.hpp
     utils/socketInterface/unixInterface.cpp
@@ -113,5 +120,6 @@ target_include_directories(base
     ${CMAKE_CURRENT_LIST_DIR}
     ${fmtlog_SOURCE_DIR}
     ${rapidjson_SOURCE_DIR}/include
+    ${nlohmann_json_SOURCE_DIR}/include
     ${ENGINE_SOURCE_DIR}/json
     )
