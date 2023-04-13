@@ -19,8 +19,22 @@ namespace internal
 {
 constexpr auto QUOTED_TAG = "!";
 
-rapidjson::Value parse_scalar(const YAML::Node& node,
-                                     rapidjson::Document::AllocatorType& allocator)
+#ifdef JSON_USE_NLOHMANN
+std::string stringify(const rapidjson::Value& v)
+{
+    if (v.IsString())
+        return {v.GetString(), v.GetStringLength()};
+    else
+    {
+        rapidjson::StringBuffer strbuf;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+        v.Accept(writer);
+        return {strbuf.GetString(), strbuf.GetLength()};
+    }
+}
+#endif
+
+rapidjson::Value parse_scalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator)
 {
 
     rapidjson::Value v;
@@ -52,50 +66,9 @@ rapidjson::Value parse_scalar(const YAML::Node& node,
     return v;
 }
 
-// YAML::Node parse_scalar(const rapidjson::Value& node)
-// {
-//     YAML::Node n;
-//     if (node.IsString())
-//     {
-//         n = node.GetString();
-//     }
-//     else if (node.IsInt())
-//     {
-//         n = node.GetInt();
-//     }
-//     else if (node.IsDouble())
-//     {
-//         n = node.GetDouble();
-//     }
-//     else if (node.IsBool())
-//     {
-//         n = node.GetBool();
-//     }
-//     else
-//     {
-//         n = YAML::Node();
-//     }
-
-//     return n;
-// }
-
-YAML::Node parse_scalar(const nlohmann::json::va& node)
+YAML::Node parse_scalar(const rapidjson::Value& node)
 {
     YAML::Node n;
-    node->
-    switch (t)
-    {
-        case nlohmann::json::value_t::null: return Type::Null;
-        case nlohmann::json::value_t::object: return Type::Object;
-        case nlohmann::json::value_t::array: return Type::Array;
-        case nlohmann::json::value_t::string: return Type::String;
-        case nlohmann::json::value_t::number_integer:
-        case nlohmann::json::value_t::number_unsigned:
-        case nlohmann::json::value_t::number_float: return Type::Number;
-        case nlohmann::json::value_t::boolean: return Type::Boolean;
-        default: throw std::runtime_error("Unknown nlohmann::json::value_t");
-    }
-
 
     if (node.IsString())
     {
@@ -189,36 +162,31 @@ rapidjson::Value yaml2json(const YAML::Node& root,
 
 } // namespace internal
 
-inline rapidjson::Document loadYMLfromFile(const std::string& filepath)
-{
-    // YAML::Node root = YAML::LoadAllFromFile(filepath)[x];
-    YAML::Node root = YAML::LoadFile(filepath);
-    rapidjson::Document doc; //, tmpAllocator;
-    // rapidjson::Document::AllocatorType& allocator =
-    // tmpAllocator.GetAllocator();
-
-    rapidjson::Value val = internal::yaml2json(root, doc.GetAllocator());
-    // doc.CopyFrom(val, doc.GetAllocator());
-
-    return doc;
-}
-
 /** Loads a YAML string and returns a rapidjson::Document.
  *
  * @param yamlStr The YAML string to load.
  * @return rapidjson::Document The parsed YAML string.
  * @throws YAML::ParserException If the YAML string is invalid.
  */
+#ifdef JSON_USE_RAPIDJSON
 inline rapidjson::Document loadYMLfromString(const std::string& yamlStr)
+#endif
+#ifdef JSON_USE_NLOHMANN
+inline std::string loadYMLfromString(const std::string& yamlStr)
+#endif
 {
     YAML::Node root = YAML::Load(yamlStr);
     rapidjson::Document doc, tmpAllocator;
     rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
 
     rapidjson::Value val = internal::yaml2json(root, allocator);
+#ifdef JSON_USE_RAPIDJSON
     doc.CopyFrom(val, doc.GetAllocator());
-
     return doc;
+#endif
+#ifdef JSON_USE_NLOHMANN
+    return internal::stringify(val);
+#endif
 }
 
 } // namespace yml2json

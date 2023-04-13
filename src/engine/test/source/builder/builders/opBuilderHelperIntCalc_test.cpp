@@ -10,6 +10,7 @@
 #include <any>
 #include <gtest/gtest.h>
 #include <vector>
+#include <climits>
 
 #include <baseTypes.hpp>
 
