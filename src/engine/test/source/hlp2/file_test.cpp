@@ -56,7 +56,12 @@ TEST(FilePath, parser)
             true,
             {""},
             Options {},
+#ifdef JSON_USE_RAPIDJSON
             fn(R"({"path": "C:\\Windows\\System32","name": "virus.exe","ext": "exe","drive_letter": "C"})"),
+#endif
+#ifdef JSON_USE_NLOHMANN
+            fn(R"({"drive_letter": "C", "path": "C:\\Windows\\System32","name": "virus.exe","ext": "exe"})"),
+#endif
             29},
         TestCase {
             R"(../home/..user/.rootkit/..file.sh)",

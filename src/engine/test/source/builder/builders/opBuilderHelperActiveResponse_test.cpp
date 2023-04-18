@@ -151,13 +151,11 @@ string getExpectedResult(string commandName,
     auto firstLocationParam {isLocal ? 'R' : 'N'};
     auto secondLocationParam {isAll | isID ? 'S' : 'N'};
 
-    expectedResult =
-        string("(local_source) [] N") + firstLocationParam + secondLocationParam + " "
-        + locationValue + " {\"version\":" + ar::SUPPORTED_VERSION + ",\"command\":\""
-        + commandName + (timeout.empty() ? "0" : timeout)
-        + "\",\"parameters\":{\"extra_args\":[" + extraArgs + "],\"alert\":"
-        + originalEvent->str() + "},\"origin\":{\"module\":\"wazuh-engine\",\"name\":\""
-        + ar::ORIGIN_NAME + "\"}}";
+    expectedResult = string("(local_source) [] N") + firstLocationParam + secondLocationParam + " " + locationValue
+                     + " {\"version\":" + ar::SUPPORTED_VERSION + ",\"command\":\"" + commandName
+                     + (timeout.empty() ? "0" : timeout) + "\",\"parameters\":{\"extra_args\":[" + extraArgs
+                     + "],\"alert\":" + originalEvent->str() + "},\"origin\":{\"module\":\"wazuh-engine\",\"name\":\""
+                     + ar::ORIGIN_NAME + "\"}}";
 
     return expectedResult;
 }

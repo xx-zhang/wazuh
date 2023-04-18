@@ -206,14 +206,21 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveToArray)
             "field": ["007", 911, false, null, true]
         }
     })");
+
+    const auto result = op->getPtr<Term<EngineOp>>()->getFn()(event);
+    ASSERT_TRUE(result);
+
+#ifdef JSON_USE_RAPIDJSON
     Json expected {R"({
         "fieldTo": {
             "field": [123, 12.3, "value", null, false, ["arrayvalue"], {"objkey":"objvalue"}, "007", 911, true]
         }
     })"};
+#endif
+#ifdef JSON_USE_NLOHMANN
+    Json expected {R"({"fieldTo":{"field":["007",911,false,null,true]}})"};
+#endif
 
-    const auto result = op->getPtr<Term<EngineOp>>()->getFn()(event);
-    ASSERT_TRUE(result);
     ASSERT_EQ(expected, *result.payload());
 }
 
@@ -313,7 +320,7 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveObjectsNestedMixedTypes)
             }
         }
     })");
-
+#ifdef JSON_USE_RAPIDJSON
     Json expected {R"({
         "fieldTo": {
             "field1": {
@@ -351,6 +358,45 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveObjectsNestedMixedTypes)
             }
         }
     })"};
+#endif
+#ifdef JSON_USE_NLOHMANN
+    Json expected {R"({
+        "fieldTo": {
+            "field1": {
+            "field11": 11,
+            "field12": "new_value12",
+            "field13": {
+                "field131": "value131",
+                "field132": [404, null, "newArrayValue132", false, 0.07]
+            },
+            "field14": "value14"
+            },
+            "field3": {
+            "field31": {
+                "field311": "new_value311",
+                "field312": 3.12,
+                "field313": {
+                "field3131": true,
+                "field3133": 91218,
+                "field3134": [null, "arrayValue3134"],
+                "field3135": {
+                    "field31351": "newValue31351",
+                    "field31352": 31352,
+                    "field31353": [31353, true]
+                },
+                "field3132": "value3132"
+                }
+            }
+            },
+            "field4": {
+            "field41": 41
+            },
+            "field2": {
+            "field21": "value21"
+            }
+        }
+    })"};
+#endif
 
     const auto result = op->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);

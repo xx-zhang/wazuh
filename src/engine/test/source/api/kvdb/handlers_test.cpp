@@ -688,8 +688,22 @@ TEST_F(managerDump_Handler, SimpleExecution)
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerDump(managerDump_Handler::kvdbManager));
     const auto response = cmd(dumpWRequest(DB_NAME_2));
+#ifdef JSON_USE_RAPIDJSON
     const auto expectedEntry = json::Json {
         R"([{"value":{"keyDB":666,"keyDA":"valueDA","keyDC":[10,7,1992]},"key":"keyD"},{"key":"keyC","value":["valueCA","valueCB","valueCC"]},{"key":"keyB","value":69},{"key":"keyA","value":"valueA"}])"};
+#endif
+#ifdef JSON_USE_NLOHMANN
+    const auto expectedEntryOptA = json::Json {
+        R"([{"value":{"keyDA":"valueDA","keyDB":666,"keyDC":[10,7,1992]},"key":"keyD"},{"key":"keyC","value":["valueCA","valueCB","valueCC"]},{"key":"keyB","value":69},{"key":"keyA","value":"valueA"}])"};
+    const auto expectedEntryOptB = json::Json {
+        R"([{"value":{"keyDB":666,"keyDC":[10,7,1992],"keyDA":"valueDA"},"key":"keyD"},{"key":"keyC","value":["valueCA","valueCB","valueCC"]},{"key":"keyB","value":69},{"key":"keyA","value":"valueA"}])"};
+    const auto expectedEntryOptC = json::Json {
+        R"([{"value":{"keyDB":666,"keyDA":"valueDA","keyDC":[10,7,1992]},"key":"keyD"},{"key":"keyC","value":["valueCA","valueCB","valueCC"]},{"key":"keyB","value":69},{"key":"keyA","value":"valueA"}])"};
+    const auto expectedEntryOptD = json::Json {
+        R"([{"value":{"keyDC":[10,7,1992],"keyDA":"valueDA","keyDB":666},"key":"keyD"},{"key":"keyC","value":["valueCA","valueCB","valueCC"]},{"key":"keyB","value":69},{"key":"keyA","value":"valueA"}])"};
+    const auto expectedEntryOptE = json::Json {
+        R"([{"value":{"keyDA":"valueDA","keyDC":[10,7,1992],"keyDB":666},"key":"keyD"},{"key":"keyC","value":["valueCA","valueCB","valueCC"]},{"key":"keyB","value":69},{"key":"keyA","value":"valueA"}])"};
+#endif
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -699,8 +713,17 @@ TEST_F(managerDump_Handler, SimpleExecution)
     // check content
     const auto kvdbContent = response.data().getJson("/entries");
     ASSERT_TRUE(kvdbContent.has_value());
+#ifdef JSON_USE_RAPIDJSON
     ASSERT_EQ(kvdbContent.value(), expectedEntry) << "Response: " << kvdbContent.value().prettyStr() << std::endl
                                                   << "Expected: " << expectedEntry.prettyStr() << std::endl;
+#endif
+#ifdef JSON_USE_NLOHMANN
+    ASSERT_TRUE((kvdbContent.value() == expectedEntryOptA) || (kvdbContent.value() == expectedEntryOptB)
+                || (kvdbContent.value() == expectedEntryOptC) || (kvdbContent.value() == expectedEntryOptD)
+                || (kvdbContent.value() == expectedEntryOptE))
+        << "Response: " << kvdbContent.value().prettyStr() << std::endl
+        << "Expected: " << expectedEntryOptA.prettyStr() << std::endl;
+#endif
 }
 
 TEST_F(managerDump_Handler, SimpleEmpty)

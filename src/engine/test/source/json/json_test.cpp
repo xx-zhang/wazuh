@@ -12,54 +12,54 @@ using namespace json;
 
 TEST(NLOHMANNTest, types)
 {
-    nlohmann::json val1;
+    nlohmann::ordered_json val1;
     ASSERT_STREQ("null", val1.type_name());
-    val1 = nlohmann::json::parse("null");
+    val1 = nlohmann::ordered_json::parse("null");
     ASSERT_STREQ("null", val1.type_name());
     ASSERT_STREQ("null", val1.dump().data());
     // ASSERT_FALSE(val1.empty());
 
-    nlohmann::json val2("null");
+    nlohmann::ordered_json val2("null");
     ASSERT_STREQ("string", val2.type_name());
-    val2 = nlohmann::json::parse(R"("null")");
+    val2 = nlohmann::ordered_json::parse(R"("null")");
     ASSERT_STREQ("string", val2.type_name());
     ASSERT_STREQ(R"("null")", val2.dump().data());
     ASSERT_FALSE(val2.empty());
 
-    nlohmann::json val3(123456);
+    nlohmann::ordered_json val3(123456);
     ASSERT_STREQ("number", val3.type_name());
-    val3 = nlohmann::json::parse("123456");
+    val3 = nlohmann::ordered_json::parse("123456");
     ASSERT_STREQ("number", val3.type_name());
     ASSERT_STREQ("123456", val3.dump().data());
     ASSERT_FALSE(val3.empty());
 
-    nlohmann::json val4(123.456);
+    nlohmann::ordered_json val4(123.456);
     ASSERT_STREQ("number", val4.type_name());
-    val4 = nlohmann::json::parse("123.456");
+    val4 = nlohmann::ordered_json::parse("123.456");
     ASSERT_STREQ("number", val4.type_name());
     ASSERT_STREQ("123.456", val4.dump().data());
     ASSERT_FALSE(val4.empty());
 
-    nlohmann::json val5(true);
+    nlohmann::ordered_json val5(true);
     ASSERT_STREQ("boolean", val5.type_name());
-    val5 = nlohmann::json::parse("true");
+    val5 = nlohmann::ordered_json::parse("true");
     ASSERT_STREQ("boolean", val5.type_name());
     ASSERT_STREQ("true", val5.dump().data());
     ASSERT_FALSE(val5.empty());
 
-    nlohmann::json val6(false);
+    nlohmann::ordered_json val6(false);
     ASSERT_STREQ("boolean", val6.type_name());
-    val6 = nlohmann::json::parse("false");
+    val6 = nlohmann::ordered_json::parse("false");
     ASSERT_STREQ("boolean", val6.type_name());
     ASSERT_STREQ("false", val6.dump().data());
     ASSERT_FALSE(val6.empty());
 
-    nlohmann::json val7 = nlohmann::json::parse("[]");
+    nlohmann::ordered_json val7 = nlohmann::ordered_json::parse("[]");
     ASSERT_STREQ("array", val7.type_name());
     ASSERT_STREQ("[]", val7.dump().data());
     // ASSERT_FALSE(val7.empty());
 
-    nlohmann::json val8 = nlohmann::json::parse("{}");
+    nlohmann::ordered_json val8 = nlohmann::ordered_json::parse("{}");
     ASSERT_STREQ("object", val8.type_name());
     ASSERT_STREQ("{}", val8.dump().data());
     // ASSERT_FALSE(val8.empty());
@@ -67,155 +67,148 @@ TEST(NLOHMANNTest, types)
 
 TEST(NLOHMANNTest, reference)
 {
-    nlohmann::json value, field;
-    nlohmann::json::json_pointer ptr;
+    nlohmann::ordered_json value, field;
+    nlohmann::ordered_json::json_pointer ptr;
 
-    value = nlohmann::json::parse("true");
-    ptr = nlohmann::json::json_pointer{""};
+    value = nlohmann::ordered_json::parse("true");
+    ptr = nlohmann::ordered_json::json_pointer {""};
     field = value[ptr];
     ASSERT_TRUE(field.is_boolean());
-    ptr = nlohmann::json::json_pointer{"/"};
+    ptr = nlohmann::ordered_json::json_pointer {"/"};
     ASSERT_TRUE(field.is_boolean());
 
-    value = nlohmann::json::parse(R"({"key":"value"})");
+    value = nlohmann::ordered_json::parse(R"({"key":"value"})");
     ASSERT_TRUE(value.contains("key"));
-    ptr = nlohmann::json::json_pointer{"/key"};
+    ptr = nlohmann::ordered_json::json_pointer {"/key"};
     ASSERT_TRUE(value.contains(ptr));
     field = value[ptr];
     ASSERT_TRUE(field.is_string());
 
-    value = nlohmann::json::parse(R"({"key":{"subkey":"value"}})");
-    ptr = nlohmann::json::json_pointer{"/key/subkey"};
+    value = nlohmann::ordered_json::parse(R"({"key":{"subkey":"value"}})");
+    ptr = nlohmann::ordered_json::json_pointer {"/key/subkey"};
     ASSERT_TRUE(value.contains(ptr));
 
-    ASSERT_THROW(value[ptr].get<bool>(), nlohmann::json::type_error);
+    ASSERT_THROW(value[ptr].get<bool>(), nlohmann::ordered_json::type_error);
 
-    ptr = nlohmann::json::json_pointer{"/key/subsubkey"};
-    ASSERT_THROW(value[ptr].get<bool>(), nlohmann::json::type_error);
+    ptr = nlohmann::ordered_json::json_pointer {"/key/subsubkey"};
+    ASSERT_THROW(value[ptr].get<bool>(), nlohmann::ordered_json::type_error);
 
-    ptr = nlohmann::json::json_pointer{""};
+    ptr = nlohmann::ordered_json::json_pointer {""};
     ASSERT_EQ(value, value[ptr]);
-}
-
-class myWrapper
-{
-public:
-    nlohmann::json m_document;
-
-    myWrapper() = default;
-
-    explicit myWrapper(const char* cstr)
-        : m_document(nlohmann::json::parse(cstr))
-    {
-    }
-
-    explicit myWrapper(const std::string cstr)
-        : m_document(nlohmann::json::parse(cstr.data()))
-    {
-    }
-
-    explicit myWrapper(nlohmann::json&& document)
-        : m_document(std::move(document))
-    {
-    }
-
-    explicit myWrapper(const nlohmann::json::value_type& val)
-        : m_document(std::move(val)) {};
-
-    std::optional<myWrapper> getJson(std::string_view path = "") const
-    {
-        nlohmann::json::json_pointer ptr {path.data()};
-
-        return myWrapper(m_document.at(ptr));
-    }
-
-    bool isString() { return m_document.is_string(); }
-};
-
-TEST(JsonConstructors, MyWrapper1)
-{
-    std::optional<myWrapper> retval;
-    std::string str {R"({"key":"value"})"};
-    myWrapper json {str};
-    retval = json.getJson("/key");
-    ASSERT_TRUE(retval.value().isString());
-}
-
-std::optional<myWrapper>TestFuncX(nlohmann::json& json, const char* path)
-{
-    nlohmann::json::json_pointer ptr{path};
-
-    return myWrapper(json.at(ptr));
-}
-
-
-TEST(JsonConstructors, MyWrapper2)
-{
-    std::optional<myWrapper> retval;
-    std::string str {R"({"key":"value"})"};
-    nlohmann::json json = nlohmann::json::parse(str);
-    retval = TestFuncX(json, "/key");
-    ASSERT_TRUE(retval.value().isString());
-}
-
-std::optional<Json>TestFunc(nlohmann::json& json, const char* path)
-{
-    nlohmann::json::json_pointer ptr{path};
-
-    return Json(json.at(ptr));
-}
-
-TEST(JsonConstructors, optionalMethod1)
-{
-    std::string str {R"({"key":"value"})"};
-    nlohmann::json json = nlohmann::json::parse(str);
-    std::optional<Json> retval = TestFunc(json, "/key");
-    ASSERT_TRUE(retval.value().isString());
-}
-
-TEST(JsonConstructors, optionalMethod2)
-{
-    std::string str {R"({"key":"value"})"};
-    nlohmann::json json = nlohmann::json::parse(str);
-    std::optional<Json> retval {TestFunc(json, "/key")};
-    ASSERT_TRUE(retval.value().isString());
-}
-
-TEST(JsonConstructors, optionalMethod3)
-{
-    std::optional<Json> retval;
-    std::string str {R"({"key":"value"})"};
-    nlohmann::json json = nlohmann::json::parse(str);
-    retval = TestFunc(json, "/key");
-    ASSERT_TRUE(retval.value().isString());
-}
-
-TEST(JsonConstructors, CreateWithValue)
-{
-    int intVal {123456};
-    nlohmann::json::value_type val = 123456;
-    nlohmann::json json = val;
-    ASSERT_EQ(to_string(123456), json.dump());
 }
 
 TEST(JsonConstructors, CheckNoThrow)
 {
     Json baseDoc {};
-    nlohmann::json::value_type val{10};
+    nlohmann::ordered_json::value_type val {10};
     ASSERT_NO_THROW(Json doc);
     ASSERT_NO_THROW(Json doc {});
     ASSERT_NO_THROW(Json doc {"{}"});
     ASSERT_NO_THROW(Json doc {val});
     ASSERT_NO_THROW(Json doc {baseDoc});
-    // ASSERT_NO_THROW(Json doc = val); // XXX
     ASSERT_NO_THROW(Json doc = baseDoc);
     ASSERT_NO_THROW(Json doc {Json {}});
     ASSERT_NO_THROW(Json doc {Json {val}});
     ASSERT_NO_THROW(Json doc {Json {baseDoc}});
-    ASSERT_NO_THROW(Json doc = Json{});
-    ASSERT_NO_THROW(Json doc = Json{"{}"});
-    ASSERT_NO_THROW(Json doc = Json{val});
-    ASSERT_NO_THROW(Json doc = Json{baseDoc});
+    ASSERT_NO_THROW(Json doc = Json {});
+    ASSERT_NO_THROW(Json doc = Json {"{}"});
+    ASSERT_NO_THROW(Json doc = Json {val});
+    ASSERT_NO_THROW(Json doc = Json {baseDoc});
+}
+
+TEST(JsonConstructors, DifferentConstructorSources)
+{
+    Json baseDoc;
+
+    const char* seed {"{\"test\":\"test\"}"};
+
+    const char* ccstr {seed};
+    baseDoc = Json(ccstr);
+    ASSERT_TRUE(baseDoc.isObject());
+    baseDoc = Json{ccstr};
+    ASSERT_TRUE(baseDoc.isObject());
+
+    char carrstr[] {"{\"test\":\"test\"}"};
+    baseDoc = Json(carrstr);
+    ASSERT_TRUE(baseDoc.isObject());
+    baseDoc = Json{carrstr};
+    ASSERT_TRUE(baseDoc.isObject());
+
+    std::string str {seed};
+    baseDoc = Json(str);
+    ASSERT_TRUE(baseDoc.isObject());
+    baseDoc = Json{str};
+    ASSERT_TRUE(baseDoc.isObject());
+
+    std::string_view strView {seed};
+    baseDoc = Json(strView);
+    ASSERT_TRUE(baseDoc.isObject());
+    baseDoc = Json{strView};
+    ASSERT_TRUE(baseDoc.isObject());
+
+    Json doc2 (seed);
+    ASSERT_STREQ(doc2.str().data(),baseDoc.str().data());
+    Json doc3 {seed};
+    ASSERT_STREQ(doc3.str().data(),baseDoc.str().data());
+    Json doc4 (baseDoc);
+    ASSERT_STREQ(doc4.str().data(),baseDoc.str().data());
+    Json doc5 {baseDoc};
+    ASSERT_STREQ(doc5.str().data(),baseDoc.str().data());
+    Json doc6 = baseDoc;
+    ASSERT_STREQ(doc6.str().data(),baseDoc.str().data());
+    Json doc7 (Json {seed});
+    ASSERT_STREQ(doc7.str().data(),baseDoc.str().data());
+    Json doc8 {Json {seed}};
+    ASSERT_STREQ(doc8.str().data(),baseDoc.str().data());
+    Json doc9 {Json {baseDoc}};
+    ASSERT_STREQ(doc9.str().data(),baseDoc.str().data());
+    Json doc10 (Json {baseDoc});
+    ASSERT_STREQ(doc10.str().data(),baseDoc.str().data());
+    Json doc11 = Json (seed);
+    ASSERT_STREQ(doc11.str().data(),baseDoc.str().data());
+    Json doc12 = Json {seed};
+    ASSERT_STREQ(doc12.str().data(),baseDoc.str().data());
+    Json doc13 = Json (baseDoc);
+    ASSERT_STREQ(doc13.str().data(),baseDoc.str().data());
+    Json doc14 = Json {baseDoc};
+    ASSERT_STREQ(doc14.str().data(),baseDoc.str().data());
+}
+
+TEST(JsonConstructors, order)
+{
+    Json baseDoc;
+
+    const char* ccstr {R"({"A":"aaa","C":"ccc","B":"bbb"})"};
+    baseDoc = Json(ccstr);
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(ccstr, baseDoc.str().data());
+    baseDoc = Json{ccstr};
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(ccstr, baseDoc.str().data());
+
+    char carrstr[] = R"({"A":"aaa","C":"ccc","B":"bbb"})";
+    baseDoc = Json(carrstr);
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(carrstr, baseDoc.str().data());
+    baseDoc = Json{carrstr};
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(carrstr, baseDoc.str().data());
+
+    std::string str = R"({"A":"aaa","C":"ccc","B":"bbb"})";
+    baseDoc = Json(str);
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(str.data(), baseDoc.str().data());
+    baseDoc = Json{str};
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(str.data(), baseDoc.str().data());
+
+    std::string_view strView {R"({"A":"aaa","C":"ccc","B":"bbb"})"};
+    baseDoc = Json(strView);
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(strView.data(), baseDoc.str().data());
+    baseDoc = Json{strView};
+    ASSERT_TRUE(baseDoc.isObject());
+    ASSERT_STREQ(strView.data(), baseDoc.str().data());
 }
 
 TEST(JsonConstructors, CheckEqual)
@@ -223,11 +216,11 @@ TEST(JsonConstructors, CheckEqual)
     auto jsonStr = R"({"arrK":[],"booK":true,"intK":123,"nulK":null,"objK":{},"strK":"strV"})";
 
     Json defaultCreatedDoc;
-    ASSERT_STREQ(nlohmann::json().dump().data(), defaultCreatedDoc.str().data());
+    ASSERT_STREQ(nlohmann::ordered_json().dump().data(), defaultCreatedDoc.str().data());
 
     // XXX
     // Json kvCreatedDoc {{"key", "value"}};
-    // ASSERT_STREQ(nlohmann::json({"key", "value"}).dump().data(), kvCreatedDoc.str().data());
+    // ASSERT_STREQ(nlohmann::ordered_json({"key", "value"}).dump().data(), kvCreatedDoc.str().data());
 
     Json cstrCreatedDoc {jsonStr};
     ASSERT_STREQ(jsonStr, cstrCreatedDoc.str().data());
@@ -242,27 +235,27 @@ TEST(JsonConstructors, CheckEqual)
     ASSERT_EQ(fromJsonCreatedDoc, cstrCreatedDoc);
     ASSERT_STREQ(fromJsonCreatedDoc.str().data(), cstrCreatedDoc.str().data());
 
-    Json equalNewJsonCreatedDoc = Json{jsonStr};
+    Json equalNewJsonCreatedDoc = Json {jsonStr};
     ASSERT_STREQ(jsonStr, equalNewJsonCreatedDoc.str().data());
-    ASSERT_EQ(equalNewJsonCreatedDoc, Json{jsonStr});
+    ASSERT_EQ(equalNewJsonCreatedDoc, Json {jsonStr});
 
-    Json fromNewJsonCreatedDoc {Json{jsonStr}};
+    Json fromNewJsonCreatedDoc {Json {jsonStr}};
     ASSERT_STREQ(jsonStr, fromNewJsonCreatedDoc.str().data());
-    ASSERT_EQ(fromNewJsonCreatedDoc, Json{jsonStr});
+    ASSERT_EQ(fromNewJsonCreatedDoc, Json {jsonStr});
 
-    Json fromNewJsonCstrCreatedDoc {Json{cstrCreatedDoc}};
+    Json fromNewJsonCstrCreatedDoc {Json {cstrCreatedDoc}};
     ASSERT_STREQ(jsonStr, fromNewJsonCstrCreatedDoc.str().data());
-    ASSERT_EQ(fromNewJsonCstrCreatedDoc, Json{cstrCreatedDoc});
+    ASSERT_EQ(fromNewJsonCstrCreatedDoc, Json {cstrCreatedDoc});
     ASSERT_EQ(equalJsonCreatedDoc, cstrCreatedDoc);
 
-    nlohmann::json mDocument = nlohmann::json::parse(jsonStr);
+    nlohmann::ordered_json mDocument = nlohmann::ordered_json::parse(jsonStr);
     Json mDocumentCreatedDoc {mDocument};
     ASSERT_STREQ(mDocument.dump().data(), mDocumentCreatedDoc.str().data());
     ASSERT_EQ(equalJsonCreatedDoc, cstrCreatedDoc);
 
-    int intVal{123456};
-    nlohmann::json::value_type intValT = intVal;
-    nlohmann::json intJson = intValT;
+    int intVal {123456};
+    nlohmann::ordered_json::value_type intValT = intVal;
+    nlohmann::ordered_json intJson = intValT;
     ASSERT_STREQ(to_string(intVal).data(), intJson.dump().data());
 
     Json intValueCreatedDoc {intValT};
@@ -296,7 +289,7 @@ TEST(JsonBase, InitializeJsonString)
     ASSERT_THROW(Json doc {"{\"key\":\"value\"}}"}, std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(Json doc {"{\"key\":\"value\"}}"}, nlohmann::json::parse_error);
+    ASSERT_THROW(Json doc {"{\"key\":\"value\"}}"}, nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -364,10 +357,10 @@ TEST(JsonBuildtime, Size)
 TEST(JsonBuildtime, Null)
 {
     Json none;
-    none = Json{"null"};
+    none = Json {"null"};
     ASSERT_STREQ("null", none.str().data());
     ASSERT_TRUE(none.isNull());
-    none = Json{R"({"field":null})"};
+    none = Json {R"({"field":null})"};
     ASSERT_TRUE(none.isNull("/field"));
     ASSERT_STREQ(R"({"field":null})", none.str().data());
 }
@@ -415,8 +408,6 @@ TEST(JsonBuildtime, String)
 
 TEST(JsonBuildtime, Array)
 {
-    // XXX
-    // Json arr {"[\"value\"]"};
     Json arr {"[\"value\", 123]"};
     ASSERT_TRUE(arr.isArray());
     ASSERT_EQ(arr.size(), 2);
@@ -547,7 +538,7 @@ TEST(JsonRuntime, EqualsValue)
     ASSERT_THROW(doc.equals("object/key", value), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(doc.equals("object/key", value), nlohmann::json::parse_error);
+    ASSERT_THROW(doc.equals("object/key", value), nlohmann::ordered_json::parse_error);
 #endif
 
     // Non-existent pointer
@@ -637,8 +628,8 @@ TEST(JsonRuntime, EqualsReference)
     ASSERT_THROW(doc.equals("/object", "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(doc.equals("object/key", "/nested/object"), nlohmann::json::parse_error);
-    ASSERT_THROW(doc.equals("/object", "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(doc.equals("object/key", "/nested/object"), nlohmann::ordered_json::parse_error);
+    ASSERT_THROW(doc.equals("/object", "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 
     // Non-existent pointer
@@ -742,7 +733,6 @@ TEST(JsonRuntime, SetValue)
     ASSERT_EQ(expected.str(), doc.str());
 
     // Wrong pointer
-
 }
 
 TEST(JsonRuntime, SetReference)
@@ -836,8 +826,8 @@ TEST(JsonRuntime, SetReference)
     ASSERT_THROW(doc1.set("/object", "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(doc1.set("object/key", "/nested/object"), nlohmann::json::parse_error);
-    ASSERT_THROW(doc1.set("/object", "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(doc1.set("object/key", "/nested/object"), nlohmann::ordered_json::parse_error);
+    ASSERT_THROW(doc1.set("/object", "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 
     // Reference to non-existent object, maps to null
@@ -866,12 +856,12 @@ TEST(JsonRuntime, PrettyStr)
 
     Json doc {expected.c_str()};
 
-#ifdef JSON_USE_NLOHMANN
-    expected =
-        "{\n    \"nested\": {\n        \"array\": [\n            \"value\"\n        ],\n        \"boolF\": false,\n    "
-        "    \"boolT\": true,\n        \"int\": 123,\n        \"null\": null,\n        \"object\": {\n            "
-        "\"key\": \"value\"\n        },\n        \"real\": 123.456,\n        \"string\": \"value\"\n    }\n}";
-#endif
+// #ifdef JSON_USE_NLOHMANN
+//     expected =
+//         "{\n    \"nested\": {\n        \"array\": [\n            \"value\"\n        ],\n        \"boolF\": false,\n    "
+//         "    \"boolT\": true,\n        \"int\": 123,\n        \"null\": null,\n        \"object\": {\n            "
+//         "\"key\": \"value\"\n        },\n        \"real\": 123.456,\n        \"string\": \"value\"\n    }\n}";
+// #endif
 
     ASSERT_EQ(expected, doc.prettyStr());
 }
@@ -884,10 +874,10 @@ TEST(JsonRuntime, Str)
 
     Json doc {expected.c_str()};
 
-#ifdef JSON_USE_NLOHMANN
-    expected = "{\"nested\":{\"array\":[\"value\"],\"boolF\":false,\"boolT\":true,\"int\":123,\"null\":null,\"object\":"
-               "{\"key\":\"value\"},\"real\":123.456,\"string\":\"value\"}}";
-#endif
+// #ifdef JSON_USE_NLOHMANN
+//     expected = "{\"nested\":{\"array\":[\"value\"],\"boolF\":false,\"boolT\":true,\"int\":123,\"null\":null,\"object\":"
+//                "{\"key\":\"value\"},\"real\":123.456,\"string\":\"value\"}}";
+// #endif
 
     ASSERT_EQ(expected, doc.str());
 }
@@ -963,9 +953,9 @@ TEST(JsonRuntime, strFromPathNotCorrectPointer)
     ASSERT_THROW(doc.str("-Field"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(doc.str("Field"), nlohmann::json::parse_error);
-    ASSERT_THROW(doc.str("-/Field"), nlohmann::json::parse_error);
-    ASSERT_THROW(doc.str("-Field"), nlohmann::json::parse_error);
+    ASSERT_THROW(doc.str("Field"), nlohmann::ordered_json::parse_error);
+    ASSERT_THROW(doc.str("-/Field"), nlohmann::ordered_json::parse_error);
+    ASSERT_THROW(doc.str("-Field"), nlohmann::ordered_json::parse_error);
 #endif
 
     ASSERT_EQ(doc.str("/Field"), "\"value\"");
@@ -1039,7 +1029,7 @@ TEST(JsonQueryTest, TypeName)
     ASSERT_THROW(nestedNullObj.typeName("key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(nestedNullObj.typeName("key"), nlohmann::json::parse_error);
+    ASSERT_THROW(nestedNullObj.typeName("key"), nlohmann::ordered_json::parse_error);
 #endif
     // Field not found
     ASSERT_THROW(nestedNullObj.typeName("/notFound"), std::runtime_error);
@@ -1082,7 +1072,7 @@ TEST(JsonQueryTest, Type)
     ASSERT_THROW(nestedObjectObj.type("invalid"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(nestedObjectObj.type("invalid"), nlohmann::json::parse_error);
+    ASSERT_THROW(nestedObjectObj.type("invalid"), nlohmann::ordered_json::parse_error);
 #endif
 
     // field not found
@@ -1185,7 +1175,7 @@ TEST(JsonGettersTest, GetString)
     ASSERT_THROW(jObjStr.getString("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjStr.getString("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjStr.getString("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1259,7 +1249,7 @@ TEST(JsonGettersTest, GetInt)
     ASSERT_THROW(jObjInt.getInt("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjInt.getInt("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjInt.getInt("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1333,7 +1323,7 @@ TEST(JsonGettersTest, GetInt64)
     ASSERT_THROW(jObjInt64.getInt64("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjInt64.getInt64("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjInt64.getInt64("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1407,7 +1397,7 @@ TEST(JsonGettersTest, GetFloat)
     ASSERT_THROW(jObjReal.jObjReal("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjReal.getDouble("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjReal.getDouble("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1481,7 +1471,7 @@ TEST(JsonGettersTest, GetDouble)
     ASSERT_THROW(jObjReal.getDouble("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjReal.getDouble("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjReal.getDouble("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1512,17 +1502,16 @@ TEST(JsonGettersTest, GetBool)
     ASSERT_FALSE(got.value());
 
     // Failure cases
-    std::vector<Json> failureCases = {  Json {R"({"nested": "value"})"},
-                                        Json {"\"value\""},
-                                        Json {R"({"nested": 123})"},
-                                        Json {"123"},
-                                        Json {R"({"nested": 123.456})"},
-                                        Json {"123.456"},
-                                        Json {R"({"nested": {"key": "value"}})"},
-                                        Json {R"({"key": "value"})"},
-                                        Json {R"({"nested": ["value"]})"},
-                                        Json {"[\"value\"]"}
-                                    };
+    std::vector<Json> failureCases = {Json {R"({"nested": "value"})"},
+                                      Json {"\"value\""},
+                                      Json {R"({"nested": 123})"},
+                                      Json {"123"},
+                                      Json {R"({"nested": 123.456})"},
+                                      Json {"123.456"},
+                                      Json {R"({"nested": {"key": "value"}})"},
+                                      Json {R"({"key": "value"})"},
+                                      Json {R"({"nested": ["value"]})"},
+                                      Json {"[\"value\"]"}};
 
     for (auto i = 0; i < failureCases.size(); i++)
     {
@@ -1543,7 +1532,7 @@ TEST(JsonGettersTest, GetBool)
     ASSERT_THROW(jObjBool.getBool("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjBool.getBool("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjBool.getBool("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1626,29 +1615,8 @@ TEST(JsonGettersTest, GetArray)
     ASSERT_THROW(jObjArray.getArray("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjArray.getArray("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjArray.getArray("object/key"), nlohmann::ordered_json::parse_error);
 #endif
-}
-
-// XXX just for testing
-TEST(JsonGettersTest, GetArrayNew)
-{
-    // Success cases
-    Json jObjArray {R"({
-        "nested": [
-            "value1",
-            "value2"
-        ]
-    })"};
-    Json jArray {"[\"value1\", \"value2\"]"};
-    std::optional<std::vector<Json>> got{jObjArray.getArray("/nested")};
-    ASSERT_TRUE(got.has_value());
-    ASSERT_EQ(2, got.value().size());
-    // std::cerr << "got.value: " << got.value()[0].str() << std::endl;
-    ASSERT_TRUE(got.value()[0].getString().has_value());
-    ASSERT_EQ("value1", got.value()[0].getString().value());
-    ASSERT_TRUE(got.value()[1].getString().has_value());
-    ASSERT_EQ("value2", got.value()[1].getString().value());
 }
 
 TEST(JsonGettersTest, GetObject)
@@ -1669,9 +1637,6 @@ TEST(JsonGettersTest, GetObject)
     ASSERT_TRUE(got.has_value());
     ASSERT_EQ(2, got.value().size());
     ASSERT_EQ("key1", std::get<0>(got.value()[0]));
-    // XXX
-    auto val = std::get<1>(got.value()[0]);
-    auto valDump = val.str();
     ASSERT_EQ("value1", std::get<1>(got.value()[0]).getString().value());
     ASSERT_EQ("key2", std::get<0>(got.value()[1]));
     ASSERT_EQ("value2", std::get<1>(got.value()[1]).getString().value());
@@ -1730,7 +1695,12 @@ TEST(JsonGettersTest, GetObject)
     }
 
     // Wrong pointer
+#ifdef JSON_USE_RAPIDJSON
     ASSERT_THROW(jObjObject.getObject("object/key"), std::runtime_error);
+#endif
+#ifdef JSON_USE_NLOHMANN
+    ASSERT_THROW(jObjObject.getObject("object/key"), nlohmann::ordered_json::parse_error);
+#endif
 }
 
 TEST(JsonGettersTest, GetJson)
@@ -1805,7 +1775,12 @@ TEST(JsonGettersTest, GetJson)
     ASSERT_FALSE(got.has_value());
 
     // Wrong pointer
-    ASSERT_THROW(source.getJson("object/key"), std::runtime_error);
+#ifdef JSON_USE_RAPIDJSON
+    ASSERT_THROW(source.getObject("object/key"), std::runtime_error);
+#endif
+#ifdef JSON_USE_NLOHMANN
+    ASSERT_THROW(source.getObject("object/key"), nlohmann::ordered_json::parse_error);
+#endif
 }
 
 /****************************************************************************************/
@@ -1835,7 +1810,7 @@ TEST(JsonSettersTest, SetString)
     ASSERT_THROW(jObjString.setString("newValue", "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjString.setString("newValue", "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjString.setString("newValue", "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1861,7 +1836,7 @@ TEST(JsonSettersTest, SetInt)
     ASSERT_THROW(jObjInt.setInt(456, "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjInt.setInt(456, "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjInt.setInt(456, "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1887,7 +1862,7 @@ TEST(JsonSettersTest, SetInt64)
     ASSERT_THROW(jObjInt64.setInt64(9223372036854775808ull, "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjInt64.setInt64(9223372036854775808ull, "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjInt64.setInt64(9223372036854775808ull, "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1913,7 +1888,7 @@ TEST(JsonSettersTest, SetFloat)
     ASSERT_THROW(jObjFloat.setFloat(789.012, "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjFloat.setFloat(789.012, "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjFloat.setFloat(789.012, "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1939,7 +1914,7 @@ TEST(JsonSettersTest, SetDouble)
     ASSERT_THROW(jObjDouble.setDouble(789.012, "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjDouble.setDouble(789.012, "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjDouble.setDouble(789.012, "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1965,7 +1940,7 @@ TEST(JsonSettersTest, SetBool)
     ASSERT_THROW(jObjBool.setBool(false, "object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjBool.setBool(false, "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjBool.setBool(false, "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -1997,7 +1972,7 @@ TEST(JsonSettersTest, SetArray)
     ASSERT_THROW(jObjArray.setArray("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjArray.setArray("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjArray.setArray("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -2031,7 +2006,7 @@ TEST(JsonSettersTest, SetObject)
     ASSERT_THROW(jObjObject.setObject("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjObject.setObject("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjObject.setObject("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -2073,7 +2048,7 @@ TEST(JsonSettersTest, AppendString)
     ASSERT_THROW(jObjString.appendString("object/key", "value2"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObjString.appendString("object/key", "value2"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjString.appendString("object/key", "value2"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -2086,8 +2061,8 @@ TEST(JsonSettersTest, Append)
     Json jObject {"{\"key\": \"value\"}"};
     Json jEmpty {"null"};
 
-    Json source{"[]"};
-    Json sourceNested{"{\"nested\": []}"};
+    Json source {"[]"};
+    Json sourceNested {"{\"nested\": []}"};
 
     // String
     auto val1 = source.str();
@@ -2126,7 +2101,6 @@ TEST(JsonSettersTest, Append)
     // Object
     ASSERT_NO_THROW(source.appendJson(jObject));
     ASSERT_EQ(source.size(), 5);
-    // XXX
     ASSERT_EQ(source.getObject("/4").value(), jObject.getObject().value());
     ASSERT_NO_THROW(sourceNested.appendJson(jObject, "/nested"));
     ASSERT_EQ(sourceNested.size("/nested"), 5);
@@ -2149,7 +2123,6 @@ TEST(JsonSettersTest, Append)
 // XXX I think this is wrong (in rapidjson)
 #ifdef JSON_USE_RAPIDJSON
     // Non-existing pointer
-    std::cerr << "SOURCE: \n" << source.str() << std::endl;
     ASSERT_NO_THROW(source.appendJson(jString, "/non-existing"));
     ASSERT_EQ(source.size("/non-existing"), 1);
     ASSERT_EQ(source.getString("/non-existing/0").value(), "value");
@@ -2160,7 +2133,7 @@ TEST(JsonSettersTest, Append)
     ASSERT_THROW(source.appendJson(jString, "invalid"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(source.appendJson(jString, "invalid"), nlohmann::json::parse_error);
+    ASSERT_THROW(source.appendJson(jString, "invalid"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -2182,38 +2155,38 @@ TEST(JsonSettersTest, Erase)
     ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(jObj.erase("object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObj.erase("object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
 TEST(JsonSettersTest, MergeObjRoot)
 {
     Json jObjSrc {R"({
-        "key1": "newValue1",
-        "key3": "newValue3",
         "key4": {
             "key5": "newValue5"
-        }
+        },
+        "key1": "newValue1",
+        "key3": "newValue3"
     })"};
 
     Json jObjDst {R"({
-        "key1": "value1",
         "key2": "value2",
+        "key1": "value1",
         "key6": {
             "key7": "value7"
         }
     })"};
 
     Json jObjExpected {R"({
-        "key1": "newValue1",
         "key2": "value2",
-        "key3": "newValue3",
+        "key1": "newValue1",
+        "key6": {
+            "key7": "value7"
+        },
         "key4": {
             "key5": "newValue5"
         },
-        "key6": {
-            "key7": "value7"
-        }
+        "key3": "newValue3"
     })"};
 
     ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc));
@@ -2223,31 +2196,32 @@ TEST(JsonSettersTest, MergeObjRoot)
 TEST(JsonSettersTest, MergeObjNested)
 {
     Json jObjSrc {R"({
-        "key1": "newValue1",
         "key3": "newValue3",
         "key4": {
             "key5": "newValue5"
-        }
+        },
+        "key1": "newValue1"
     })"};
 
     Json jObjDst {R"({
-        "key1": "value1",
         "key2": "value2",
+        "key1": "value1",
         "key6": {
-            "key7": "value7"
+            "key7": "value7",
+            "key3": "value3"
         }
     })"};
 
     Json jObjExpected {R"({
-        "key1": "value1",
         "key2": "value2",
+        "key1": "value1",
         "key6": {
-            "key1": "newValue1",
+            "key7": "value7",
             "key3": "newValue3",
             "key4": {
                 "key5": "newValue5"
             },
-            "key7": "value7"
+            "key1": "newValue1"
         }
     })"};
 
@@ -2376,7 +2350,7 @@ TEST(JsonSettersTest, MergeFailCases)
 #endif
 #ifdef JSON_USE_NLOHMANN
     // Invalid pointer
-    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc, "object/key"), nlohmann::json::parse_error);
+    ASSERT_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc, "object/key"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -2415,30 +2389,30 @@ TEST(JsonSettersTest, MergeObjRootRef)
 TEST(JsonSettersTest, MergeObjNestedRef)
 {
     Json jObjDst {R"({
-        "key1": "value1",
         "key2": "value2",
+        "key1": "value1",
         "key6": {
             "key7": "value7"
         },
         "to_merge": {
-            "key1": "newValue1",
-            "key3": "newValue3",
             "key4": {
                 "key5": "newValue5"
-            }
+            },
+            "key1": "newValue1",
+            "key3": "newValue3"
         }
     })"};
 
     Json jObjExpected {R"({
-        "key1": "value1",
         "key2": "value2",
+        "key1": "value1",
         "key6": {
-            "key1": "newValue1",
-            "key3": "newValue3",
+            "key7": "value7",
             "key4": {
                 "key5": "newValue5"
             },
-            "key7": "value7"
+            "key1": "newValue1",
+            "key3": "newValue3"
         }
     })"};
 
@@ -2656,7 +2630,7 @@ TEST(getJsonTest, invalidPath)
     ASSERT_THROW(j.getJson("key3~"), std::runtime_error);
 #endif
 #ifdef JSON_USE_NLOHMANN
-    ASSERT_THROW(j.getJson("key3~"), nlohmann::json::parse_error);
+    ASSERT_THROW(j.getJson("key3~"), nlohmann::ordered_json::parse_error);
 #endif
 }
 
@@ -2772,31 +2746,28 @@ TEST(JsonSettersTest, MergeRecursiveObjRoot)
                 },
                 "field14": "value14"
             },
-            "field2": {
-                "field21": "value21"
-            },
             "field3": {
                 "field31": {
                     "field311": "new_value311",
                     "field312": 3.12,
                     "field313": {
                         "field3131": true,
-                        "field3132": "value3132",
                         "field3133": 91218,
-                        "field3134": [
-                            null,
-                            "arrayValue3134"
-                        ],
+                        "field3134": [null, "arrayValue3134"],
                         "field3135": {
                             "field31351": "newValue31351",
                             "field31352": 31352,
                             "field31353": [31353, true]
-                        }
+                        },
+                        "field3132": "value3132"
                     }
                 }
             },
             "field4": {
                 "field41": 41
+            },
+            "field2": {
+                "field21": "value21"
             }
         })"};
 #endif

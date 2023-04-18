@@ -43,7 +43,12 @@ TEST(URIParser, parser)
             true,
             {""},
             Options {},
+#ifdef JSON_USE_RAPIDJSON
             fn(R"({"original":"https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login","domain":"demo.wazuh.com","path":"/user.php","scheme":"https","query":"name=pepe&pass=123","port":"8080","fragment":"login"})"),
+#endif
+#ifdef JSON_USE_NLOHMANN
+            fn(R"({"original":"https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login","scheme":"https","domain":"demo.wazuh.com","port":"8080","path":"/user.php","query":"name=pepe&pass=123","fragment":"login"})"),
+#endif
             61},
         TestCase {
             "https://john.doe@www.example.com:123/forum/questions/"
@@ -51,7 +56,12 @@ TEST(URIParser, parser)
             true,
             {""},
             Options {},
+#ifdef JSON_USE_RAPIDJSON
             fn(R"({"original":"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top","domain":"www.example.com","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"})"),
+#endif
+#ifdef JSON_USE_NLOHMANN
+            fn(R"({"original":"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top","scheme":"https","username":"john.doe","domain":"www.example.com","port":"123","path":"/forum/questions/","query":"tag=networking&order=newest","fragment":"top"})"),
+#endif
             85},
         TestCase {
             "https://john.doe@[2001:db8::7]:123/forum/questions/"
@@ -59,14 +69,24 @@ TEST(URIParser, parser)
             true,
             {""},
             Options {},
+#ifdef JSON_USE_RAPIDJSON
             fn(R"({"original":"https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top","domain":"[2001:db8::7]","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"})"),
+#endif
+#ifdef JSON_USE_NLOHMANN
+            fn(R"({"original":"https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top","scheme":"https","username":"john.doe","domain":"[2001:db8::7]","port":"123","path":"/forum/questions/","query":"tag=networking&order=newest","fragment":"top"})"),
+#endif
             83},
         TestCase {
             "telnet://192.0.2.16:80/",
             true,
             {""},
             Options {},
+#ifdef JSON_USE_RAPIDJSON
             fn(R"({"original":"telnet://192.0.2.16:80/","domain":"192.0.2.16","path":"/","scheme":"telnet","port":"80"})"),
+#endif
+#ifdef JSON_USE_NLOHMANN
+            fn(R"({"original":"telnet://192.0.2.16:80/","scheme":"telnet","domain":"192.0.2.16","port":"80","path":"/"})"),
+#endif
             23},
         // TestCase {
         //     "mailto:John.Doe@example.com",

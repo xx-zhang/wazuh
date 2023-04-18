@@ -15,7 +15,12 @@ TEST(Adapter_toWazuhResponse, succees_ok)
     ResponseType response;
     response.set_status(eEngine::ReturnStatus::OK);
     response.set_valuestring("test value");
+#ifdef JSON_USE_RAPIDJSON
     const auto expectedData = json::Json {R"({"valueString":"test value", "status":"OK"})"};
+#endif
+#ifdef JSON_USE_NLOHMANN
+    const auto expectedData = json::Json {R"({"status":"OK", "valueString":"test value"})"};
+#endif
 
     const auto wResponse = toWazuhResponse(response);
 

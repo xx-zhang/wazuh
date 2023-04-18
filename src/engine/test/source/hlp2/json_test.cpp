@@ -37,8 +37,7 @@ TEST(JSONParser, parser)
         // Options{}, R"()", "", 28},
         TestCase {R"({}}}}})", true, {}, Options {}, fn(R"({})"), 2},
         TestCase {R"(42)", true, {}, Options {}, fn(R"(42)"), 2},
-        TestCase {
-            R"({ "key": "value"})", true, {}, Options {}, fn(R"({ "key": "value"})"), 17},
+        TestCase {R"({ "key": "value"})", true, {}, Options {}, fn(R"({ "key": "value"})"), 17},
     };
 
     for (auto t : testCases)

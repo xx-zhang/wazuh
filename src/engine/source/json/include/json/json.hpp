@@ -758,15 +758,7 @@ public:
     };
 
 private:
-    nlohmann::json m_document;
-
-    // /**
-    //  * @brief Construct a new Json object form a rapidjason::Value.
-    //  * Copies the value.
-    //  *
-    //  * @param value The rapidjson::Value to copy.
-    //  */
-    // Json(const rapidjson::Value& value);
+    nlohmann::ordered_json m_document;
 
     /**
      * @brief Construct a new Json object form a rapidjason::GenericObject.
@@ -786,20 +778,27 @@ private:
      *
      * @throw std::runtime_error if the type is not supported.
      */
-    constexpr static Type nlohmannToJsonType(nlohmann::json::value_t t)
+    constexpr static Type nlohmannToJsonType(nlohmann::ordered_json::value_t t)
     {
         switch (t)
         {
-            case nlohmann::json::value_t::null: return Type::Null;
-            case nlohmann::json::value_t::object: return Type::Object;
-            case nlohmann::json::value_t::array: return Type::Array;
-            case nlohmann::json::value_t::string: return Type::String;
-            case nlohmann::json::value_t::number_integer:
-            case nlohmann::json::value_t::number_unsigned:
-            case nlohmann::json::value_t::number_float: return Type::Number;
-            case nlohmann::json::value_t::boolean: return Type::Boolean;
-            default: throw std::runtime_error("Unknown nlohmann::json::value_t");
+            case nlohmann::ordered_json::value_t::null: return Type::Null;
+            case nlohmann::ordered_json::value_t::object: return Type::Object;
+            case nlohmann::ordered_json::value_t::array: return Type::Array;
+            case nlohmann::ordered_json::value_t::string: return Type::String;
+            case nlohmann::ordered_json::value_t::number_integer:
+            case nlohmann::ordered_json::value_t::number_unsigned:
+            case nlohmann::ordered_json::value_t::number_float: return Type::Number;
+            case nlohmann::ordered_json::value_t::boolean: return Type::Boolean;
+            default: throw std::runtime_error("Unknown nlohmann::ordered_json::value_t");
         }
+    }
+
+    bool is_index(const std::string& s)
+    {
+        std::string::const_iterator it = s.begin();
+        while (it != s.end() && std::isdigit(*it)) ++it;
+        return !s.empty() && it == s.end();
     }
 
     // void merge(const bool isRecursive, rapidjson::Value& source, std::string_view path);
@@ -817,18 +816,18 @@ public:
      *
      * @param other The Json to copy.
      */
-    // explicit Json(nlohmann::json& document) : m_document(document) {};
+    explicit Json(nlohmann::ordered_json& document) : m_document(document) {};
 
     /**
-     * @brief Construct a new Json object from a nlohmann::json Document.
+     * @brief Construct a new Json object from a nlohmann::ordered_json Document.
      * Moves the document.
      *
      * @param document The rapidjson::Document to move.
      */
-    explicit Json(nlohmann::json&& document)
+    explicit Json(nlohmann::ordered_json&& document)
         : m_document(std::move(document)) {};
 
-    explicit Json(const nlohmann::json::value_type& val)
+    explicit Json(const nlohmann::ordered_json::value_type& val)
         : m_document(val) {};
 
     /**
@@ -837,9 +836,11 @@ public:
      * @param json The json string to parse.
      */
     explicit Json(const char* cstr)
-        : m_document(nlohmann::json::parse(cstr)) {};
+        : m_document(nlohmann::ordered_json::parse(cstr)) {};
     explicit Json(const std::string str)
-        : m_document(nlohmann::json::parse(str.data())) {};
+        : m_document(nlohmann::ordered_json::parse(str.data())) {};
+    explicit Json(const std::string_view str)
+        : m_document(nlohmann::ordered_json::parse(str.data())) {};
 
     Json(const Json& other)
         : m_document(other.m_document) {};
@@ -916,7 +917,7 @@ public:
     /************************************************************************************/
 
     Json(Json&& other) noexcept
-        : m_document {std::move(other.m_document)}
+        : m_document(std::move(other.m_document))
     {
     }
 
@@ -940,7 +941,7 @@ public:
         bool exists {false};
         try
         {
-            exists = m_document.contains(nlohmann::json::json_pointer(pointerPath.data()));
+            exists = m_document.contains(nlohmann::ordered_json::json_pointer(pointerPath.data()));
         }
         catch (const std::exception& e)
         {
@@ -963,9 +964,9 @@ public:
      */
     bool equals(std::string_view pointerPath, const Json& value) const
     {
-        nlohmann::json::json_pointer ptr;
+        nlohmann::ordered_json::json_pointer ptr;
 
-        ptr = nlohmann::json::json_pointer(pointerPath.data());
+        ptr = nlohmann::ordered_json::json_pointer(pointerPath.data());
 
         // check if the pointer path exists in the JSON object
         if (!m_document.contains(ptr))
@@ -976,7 +977,7 @@ public:
         // get the value at the pointer path
         try
         {
-            const nlohmann::json& fieldValue = m_document[ptr];
+            const nlohmann::ordered_json& fieldValue = m_document[ptr];
 
             if (fieldValue.type() != value.m_document.type())
             {
@@ -1005,11 +1006,11 @@ public:
      */
     bool equals(std::string_view firstPointerPath, std::string_view secondPointerPath) const
     {
-        nlohmann::json::json_pointer ptrFirst;
-        ptrFirst = nlohmann::json::json_pointer(firstPointerPath.data());
+        nlohmann::ordered_json::json_pointer ptrFirst;
+        ptrFirst = nlohmann::ordered_json::json_pointer(firstPointerPath.data());
 
-        nlohmann::json::json_pointer ptrSecond;
-        ptrSecond = nlohmann::json::json_pointer(secondPointerPath.data());
+        nlohmann::ordered_json::json_pointer ptrSecond;
+        ptrSecond = nlohmann::ordered_json::json_pointer(secondPointerPath.data());
 
         // check if the pointer path exists in the JSON object
         if (!m_document.contains(ptrFirst) || !m_document.contains(ptrSecond))
@@ -1020,8 +1021,8 @@ public:
         // get the value at the pointer path
         try
         {
-            const nlohmann::json& firstFieldValue = m_document[ptrFirst];
-            const nlohmann::json& secondFieldValue = m_document[ptrSecond];
+            const nlohmann::ordered_json& firstFieldValue = m_document[ptrFirst];
+            const nlohmann::ordered_json& secondFieldValue = m_document[ptrSecond];
 
             if (firstFieldValue.type() != secondFieldValue.type())
             {
@@ -1047,14 +1048,8 @@ public:
      */
     void set(std::string_view pointerPath, const Json& value)
     {
-        nlohmann::json::json_pointer ptr;
-        ptr = nlohmann::json::json_pointer(pointerPath.data());
-
-        // check if the pointer path exists in the JSON object
-        // if (!m_document.contains(ptr))
-        // {
-        //     throw std::invalid_argument("Invalid pointer path!");
-        // }
+        nlohmann::ordered_json::json_pointer ptr;
+        ptr = nlohmann::ordered_json::json_pointer(pointerPath.data());
 
         // set the value at the pointer path
         try
@@ -1079,15 +1074,15 @@ public:
      */
     void set(std::string_view basePointerPath, std::string_view referencePointerPath)
     {
-        nlohmann::json::json_pointer ptrBase;
-        ptrBase = nlohmann::json::json_pointer(basePointerPath.data());
+        nlohmann::ordered_json::json_pointer ptrBase;
+        ptrBase = nlohmann::ordered_json::json_pointer(basePointerPath.data());
 
-        nlohmann::json::json_pointer ptrReference;
-        ptrReference = nlohmann::json::json_pointer(referencePointerPath.data());
+        nlohmann::ordered_json::json_pointer ptrReference;
+        ptrReference = nlohmann::ordered_json::json_pointer(referencePointerPath.data());
 
         if (!m_document.contains(ptrReference))
         {
-            m_document[ptrBase] = nlohmann::json();
+            m_document[ptrBase] = nlohmann::ordered_json();
         }
 
         // set the value at the pointer path
@@ -1107,7 +1102,7 @@ public:
 
     std::optional<std::string> getString(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1136,7 +1131,7 @@ public:
 
     std::optional<int> getInt(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1165,7 +1160,7 @@ public:
 
     std::optional<int64_t> getInt64(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1194,7 +1189,7 @@ public:
 
     std::optional<float_t> getFloat(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1223,7 +1218,7 @@ public:
 
     std::optional<double_t> getDouble(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1252,7 +1247,7 @@ public:
 
     std::optional<double> getNumberAsDouble(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1281,7 +1276,7 @@ public:
 
     std::optional<bool> getBool(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1310,7 +1305,7 @@ public:
 
     std::optional<std::vector<Json>> getArray(std::string_view path = "") const
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
@@ -1323,33 +1318,10 @@ public:
         {
             std::vector<Json> result {};
 
-            for (const nlohmann::json element : field)
+            for (const nlohmann::ordered_json element : field)
             {
                 result.push_back(Json(element));
             }
-            // for (auto& it = field.begin(); it != field.end(); ++it)
-            // {
-            //     result.push_back(Json(*it));
-            // }
-            // int i = 0;
-            // for (const auto element : field)
-            // {
-            //     std::cerr << i << "-elem: " << element.dump() << std::endl;
-            //     auto jsonElem = Json(element);
-            //     std::cerr << i << "-json: " << jsonElem.str() << std::endl;
-            //     result.push_back(jsonElem);
-            //     auto elemAfter = result.back();
-            //     std::cerr << i << "-jsonafter: " << elemAfter.str() << std::endl;
-            //     i++;
-            // }
-            // auto front = result.front();
-            // auto idx0 = result[0];
-            // std::cerr << "resultFront0: " << result.front().str() << std::endl;
-            // std::cerr << "resultIdx0: " << result[0].str() << std::endl;
-            // std::cerr << "resultType0: " << result[0].typeName().data() << std::endl;
-            // std::cerr << "resultFront1: " << result.back().str() << std::endl;
-            // std::cerr << "resultIdx1: " << result[1].str() << std::endl;
-            // std::cerr << "resultType1: " << result[1].typeName().data() << std::endl;
 
             return result;
         }
@@ -1361,7 +1333,7 @@ public:
     {
 
         std::optional<std::vector<std::tuple<std::string, Json>>> retval {std::nullopt};
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (m_document.contains(ptr))
         {
@@ -1380,7 +1352,7 @@ public:
             return retval;
         }
 
-        throw std::runtime_error("Path is not contained in JSON");
+        return std::nullopt;
     }
 
     /**
@@ -1406,16 +1378,15 @@ public:
      */
     std::optional<std::string> str(std::string_view path) const
     {
-        nlohmann::json::json_pointer ptr;
-        ptr = nlohmann::json::json_pointer(path.data());
+        nlohmann::ordered_json::json_pointer ptr;
+        ptr = nlohmann::ordered_json::json_pointer(path.data());
 
         if (!m_document.contains(ptr))
         {
             return std::nullopt;
         }
 
-        auto retval = m_document[ptr].dump();
-        return retval;
+        return m_document[ptr].dump();
     }
 
     /**
@@ -1427,30 +1398,19 @@ public:
      */
     std::optional<Json> getJson(std::string_view path = "") const
     {
-        // XXX
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        return Json(m_document.at(ptr));
+        if (m_document.contains(ptr))
+        {
+            return Json(m_document.at(ptr));
+        }
 
-        // if (m_document.contains(ptr))
-        // {
-        //     std::optional<Json> opt1 {m_document[ptr]};
-        //     std::cerr << "opt1: " << opt1.value().str() << std::endl;
-        //     auto opt2 = std::make_optional<Json>(m_document[ptr]);
-        //     std::cerr << "opt2: " << opt2.value().str() << std::endl;
-        //     // return opt;
-
-        //     return m_document.at(ptr);
-        // }
-
-        // return std::nullopt;
+        return std::nullopt;
     }
 
-    // XXX
     friend std::ostream& operator<<(std::ostream& os, const Json& json)
     {
         os << json.str();
-        ;
         return os;
     }
 
@@ -1474,7 +1434,7 @@ public:
         }
         else
         {
-            nlohmann::json::json_pointer ptr {path.data()};
+            nlohmann::ordered_json::json_pointer ptr {path.data()};
 
             if (m_document.contains(ptr) && (m_document[ptr].is_array() || m_document[ptr].is_object()))
             {
@@ -1492,7 +1452,7 @@ public:
      */
     bool isNull(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_null());
     }
 
@@ -1503,7 +1463,7 @@ public:
      */
     bool isBool(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_boolean());
     }
 
@@ -1514,7 +1474,7 @@ public:
      */
     bool isNumber(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_number());
     }
 
@@ -1525,7 +1485,7 @@ public:
      */
     bool isInt(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_number_integer());
     }
 
@@ -1536,7 +1496,7 @@ public:
      */
     bool isInt64(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_number_integer());
     }
 
@@ -1547,7 +1507,7 @@ public:
      */
     bool isFloat(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_number_float());
     }
 
@@ -1558,7 +1518,7 @@ public:
      */
     bool isDouble(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_number_float());
     }
 
@@ -1569,7 +1529,7 @@ public:
      */
     bool isString(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_string());
     }
 
@@ -1580,7 +1540,7 @@ public:
      */
     bool isArray(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_array());
     }
 
@@ -1595,7 +1555,7 @@ public:
      */
     bool isObject(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
         return (m_document.contains(ptr) && m_document[ptr].is_object());
     }
 
@@ -1608,7 +1568,7 @@ public:
     {
         std::string type {""};
 
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (path.empty())
         {
@@ -1639,7 +1599,7 @@ public:
      */
     Type type(std::string_view path = "") const
     {
-        const nlohmann::json::json_pointer ptr {path.data()};
+        const nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (m_document.contains(ptr))
         {
@@ -1698,7 +1658,13 @@ public:
      */
     void setNull(std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
         m_document[ptr] = nullptr;
     }
 
@@ -1713,7 +1679,13 @@ public:
      */
     void setBool(bool value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
         m_document[ptr] = value;
     }
 
@@ -1728,7 +1700,13 @@ public:
      */
     void setInt(int value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
         m_document[ptr] = value;
     }
 
@@ -1743,7 +1721,13 @@ public:
      */
     void setInt64(int64_t value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
         m_document[ptr] = value;
     }
 
@@ -1758,7 +1742,13 @@ public:
      */
     void setDouble(double_t value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
         m_document[ptr] = value;
     }
 
@@ -1773,7 +1763,13 @@ public:
      */
     void setFloat(float_t value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
         m_document[ptr] = value;
     }
 
@@ -1788,8 +1784,14 @@ public:
      */
     void setString(std::string_view value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
-        m_document[ptr] = value;
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
+        m_document[ptr] = value.data();
     }
 
     /**
@@ -1802,8 +1804,14 @@ public:
      */
     void setArray(std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
-        m_document[ptr] = nlohmann::json::array();
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
+        m_document[ptr] = nlohmann::ordered_json::array();
     }
 
     /**
@@ -1816,8 +1824,14 @@ public:
      */
     void setObject(std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
-        m_document[ptr] = nlohmann::json::object();
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
+
+        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        {
+            m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+        }
+
+        m_document[ptr] = nlohmann::ordered_json::object();
     }
 
     /**
@@ -1832,11 +1846,11 @@ public:
      */
     void appendString(std::string_view value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!exists(path) || !isArray(path))
         {
-            m_document[ptr] = nlohmann::json::array();
+            m_document[ptr] = nlohmann::ordered_json::array();
         }
 
         m_document[ptr].emplace_back(value);
@@ -1852,19 +1866,18 @@ public:
      */
     void appendJson(const Json& value, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr {path.data()};
+        nlohmann::ordered_json::json_pointer ptr {path.data()};
 
         if (!m_document.contains(ptr))
         {
             if (m_document.empty())
             {
-                m_document = nlohmann::json::parse("{}");
+                m_document = nlohmann::ordered_json::parse("{}");
             }
-            m_document[ptr] = nlohmann::json::array();
         }
         if (!m_document[ptr].is_array())
         {
-            throw std::runtime_error("Json is not an array");
+            m_document[ptr] = nlohmann::ordered_json::array();
         }
 
         m_document[ptr].emplace_back(value.m_document);
@@ -1892,16 +1905,14 @@ public:
             catch (...)
             {
             }
-            m_document = nlohmann::json();
+            m_document = nlohmann::ordered_json();
         }
         else
         {
-            nlohmann::json::json_pointer ptr {path.data()};
-            auto& field = m_document[ptr];
+            nlohmann::ordered_json::json_pointer ptr {path.data()};
             try
             {
-                auto it = field.erase(field.begin());
-                result = ((it == field.end()) && m_document[ptr.parent_pointer()].erase(ptr.back()));
+                result = m_document[ptr.parent_pointer()].erase(ptr.back()) > 0 ? true : false;
             }
             catch (...)
             {
@@ -1927,7 +1938,7 @@ public:
      */
     void merge(const bool isRecursive, Json& other, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr{path.data()};
+        nlohmann::ordered_json::json_pointer ptr{path.data()};
 
         // Check if the path is valid
         if (!m_document.contains(ptr))
@@ -1979,7 +1990,7 @@ public:
         }
     }
 
-    void merge(const bool isRecursive, nlohmann::json::value_type& source, std::string_view path = "")
+    void merge(const bool isRecursive, nlohmann::ordered_json::value_type& source, std::string_view path = "")
     {
         Json otherJson {source};
         merge(isRecursive, otherJson, path);
@@ -2002,7 +2013,7 @@ public:
      */
     void merge(const bool isRecursive, std::string_view source, std::string_view path = "")
     {
-        nlohmann::json::json_pointer ptr{source.data()};
+        nlohmann::ordered_json::json_pointer ptr{source.data()};
 
         if (!m_document.contains(ptr))
         {

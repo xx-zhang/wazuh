@@ -51,12 +51,18 @@ TEST(OpBuilderHelperMerge, MergeObjectsRoot)
           "field2": "value2"
        }
     })");
-
     json::Json expected {R"({
        "field1": "new_value1",
        "field2": "value2",
        "field3": "value3"
     })"};
+#ifdef JSON_USE_NLOHMANN
+    expected = json::Json(R"({
+                  "field1": "new_value1",
+                  "field3": "value3",
+                  "field2": "value2"
+               })");
+#endif
 
     auto result = op->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);
@@ -88,6 +94,15 @@ TEST(OpBuilderHelperMerge, MergeObjectsNested)
           "field3": "value3"
        }
     })"};
+#ifdef JSON_USE_NLOHMANN
+    expected = json::Json {R"({
+         "field": {
+            "field1": "new_value1",
+            "field3": "value3",
+            "field2": "value2"
+         }
+      })"};
+#endif
 
     auto result = op->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);

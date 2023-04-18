@@ -460,6 +460,7 @@ TEST(OperationMapBuilderTest, UnexpectedDefinition)
 TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
 {
     auto registry = std::make_shared<Registry>();
+#ifdef JSON_USE_RAPIDJSON
     auto expected = std::make_shared<Json>(R"({
         "string": "value",
         "int": 1,
@@ -506,8 +507,88 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
         "nestedBoolFRef": false,
         "nestedArrayRef": [1, 2, 3],
         "nestedObjectRef": {"a": 1, "b": 2}
-
 })");
+#endif
+#ifdef JSON_USE_NLOHMANN
+    auto expected = std::make_shared<Json>(R"({
+        "array": [
+            1,
+            2,
+            3
+        ],
+        "object": {
+            "a": 1,
+            "b": 2
+        },
+        "nested": {
+            "array": [
+            1,
+            2,
+            3
+            ],
+            "object": {
+            "a": 1,
+            "b": 2
+            },
+            "string": "value",
+            "int": 1,
+            "double": 1,
+            "boolT": true,
+            "boolF": false,
+            "null": null,
+            "stringRef": "value",
+            "intRef": 1,
+            "doubleRef": 1,
+            "boolTRef": true,
+            "boolFRef": false,
+            "arrayRef": [
+            1,
+            2,
+            3
+            ],
+            "objectRef": {
+            "a": 1,
+            "b": 2
+            },
+            "nullRef": null
+        },
+        "string": "value",
+        "int": 1,
+        "double": 1,
+        "boolT": true,
+        "boolF": false,
+        "null": null,
+        "stringRef": "value",
+        "intRef": 1,
+        "doubleRef": 1,
+        "boolTRef": true,
+        "boolFRef": false,
+        "arrayRef": [
+            1,
+            2,
+            3
+        ],
+        "objectRef": {
+            "a": 1,
+            "b": 2
+        },
+        "nullRef": null,
+        "nestedStringRef": "value",
+        "nestedIntRef": 1,
+        "nestedDoubleRef": 1,
+        "nestedBoolTRef": true,
+        "nestedBoolFRef": false,
+        "nestedArrayRef": [
+            1,
+            2,
+            3
+        ],
+        "nestedObjectRef": {
+            "a": 1,
+            "b": 2
+        }
+        })");
+#endif
     auto eventOk = std::make_shared<Json>(R"({
         "array": [1, 2, 3],
         "object": {"a": 1, "b": 2},

@@ -725,6 +725,7 @@ TEST(Parse_uri, Match_value)
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload().get()->exists("/field"));
     ASSERT_TRUE(result1.payload().get()->isObject("/field"));
+
     auto expected = R"({"original":"http://www.wazuh.com/","scheme":"http","domain":"www.wazuh.com","path":"/"})";
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 
@@ -761,6 +762,7 @@ TEST(Parse_uri, Match_ref)
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload().get()->exists("/field"));
     ASSERT_TRUE(result1.payload().get()->isObject("/field"));
+
     auto expected = R"({"original":"http://www.wazuh.com/","scheme":"http","domain":"www.wazuh.com","path":"/"})";
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
@@ -1014,8 +1016,8 @@ TEST(parse_file, Match_value)
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload().get()->exists("/field"));
     ASSERT_TRUE(result1.payload().get()->isObject("/field"));
-    auto expected =
-        R"({"drive_letter":"C","path":"C:\\Users\\test","name":"test.txt","ext":"txt"})";
+
+    auto expected = R"({"drive_letter":"C","path":"C:\\Users\\test","name":"test.txt","ext":"txt"})";
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
@@ -1035,8 +1037,8 @@ TEST(parse_file, Match_ref)
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload().get()->exists("/field"));
     ASSERT_TRUE(result1.payload().get()->isObject("/field"));
-    auto expected =
-        R"({"drive_letter":"C","path":"C:\\Users\\test","name":"test.txt","ext":"txt"})";
+
+    auto expected = R"({"drive_letter":"C","path":"C:\\Users\\test","name":"test.txt","ext":"txt"})";
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 

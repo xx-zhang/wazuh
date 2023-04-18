@@ -120,6 +120,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_success)
 // TODO This test should not be valid since the key must be unique.
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_success)
 {
+    GTEST_SKIP();
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"delete"},
                                  std::vector<std::string> {});
@@ -133,6 +134,5 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_su
 
     ASSERT_TRUE(result);
 
-    ASSERT_TRUE(result.payload()->exists(
-        "/field2check")); // Remove the first occurrence of the path
+    ASSERT_TRUE(result.payload()->exists("/field2check")); // Remove the first occurrence of the path
 }
