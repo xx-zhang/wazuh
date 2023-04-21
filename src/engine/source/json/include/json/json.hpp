@@ -29,6 +29,8 @@
 
 #include <error.hpp>
 
+#include <logging/logging.hpp>
+
 namespace json
 {
 
@@ -741,7 +743,6 @@ public:
     void merge(const bool isRecursive, std::string_view other, std::string_view path = "");
 
 };
-
 #endif
 #ifdef JSON_USE_NLOHMANN
 class Json
@@ -766,14 +767,13 @@ private:
      *
      * @param object The rapidjson::GenericObject to copy.
      */
-    // Json(const rapidjson::GenericObject<true, rapidjson::Value>& object);
     Json(const std::string& key, const std::string& value)
         : m_document {{key, value}} {};
 
     /**
      * @brief Get Json type from internal rapidjason type.
      *
-     * @param t rapidjson::Type to convert.
+     * @param t  nlohmann::ordered_json::value_t to convert.
      * @return constexpr Type The converted type.
      *
      * @throw std::runtime_error if the type is not supported.
@@ -794,14 +794,13 @@ private:
         }
     }
 
-    bool is_index(const std::string& s)
+    bool is_index(const std::string& sIn)
     {
+        const std::string s = (sIn[0] == '/') ? sIn.substr(1) : sIn;
         std::string::const_iterator it = s.begin();
         while (it != s.end() && std::isdigit(*it)) ++it;
         return !s.empty() && it == s.end();
     }
-
-    // void merge(const bool isRecursive, rapidjson::Value& source, std::string_view path);
 
 public:
     /**
@@ -979,7 +978,7 @@ public:
         {
             const nlohmann::ordered_json& fieldValue = m_document[ptr];
 
-            if (fieldValue.type() != value.m_document.type())
+            if (nlohmannToJsonType(fieldValue.type()) != nlohmannToJsonType(value.m_document.type()))
             {
                 return false;
             }
@@ -1046,14 +1045,24 @@ public:
      *
      * @throws std::runtime_error If the pointer path is invalid.
      */
-    void set(std::string_view pointerPath, const Json& value)
+    void set(std::string_view dstPath, const Json& value)
     {
-        nlohmann::ordered_json::json_pointer ptr;
-        ptr = nlohmann::ordered_json::json_pointer(pointerPath.data());
+        nlohmann::ordered_json::json_pointer ptr {dstPath.data()};
 
         // set the value at the pointer path
         try
         {
+            if (ptr.parent_pointer().empty() && !m_document.is_object()
+                && !(m_document.is_array() && is_index(ptr.to_string())))
+            {
+                m_document = nlohmann::ordered_json::object();
+            }
+            else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                     && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
+            {
+                m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
+            }
+
             m_document[ptr] = value.m_document;
         }
         catch (const std::exception& ex)
@@ -1067,32 +1076,42 @@ public:
      * Overwrites previous value. If reference field is not found, sets base field to
      * null.
      *
-     * @param basePointerPath The base pointer path to set.
-     * @param referencePointerPath The reference pointer path.
+     * @param dstPath The base pointer path to set.
+     * @param srcPath The reference pointer path.
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    void set(std::string_view basePointerPath, std::string_view referencePointerPath)
+    void set(std::string_view dstPath, std::string_view srcPath)
     {
-        nlohmann::ordered_json::json_pointer ptrBase;
-        ptrBase = nlohmann::ordered_json::json_pointer(basePointerPath.data());
+        nlohmann::ordered_json::json_pointer ptrDst {dstPath.data()};
+        nlohmann::ordered_json::json_pointer ptrSrc {srcPath.data()};
 
-        nlohmann::ordered_json::json_pointer ptrReference;
-        ptrReference = nlohmann::ordered_json::json_pointer(referencePointerPath.data());
-
-        if (!m_document.contains(ptrReference))
+        if (ptrDst.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptrDst.to_string())))
         {
-            m_document[ptrBase] = nlohmann::ordered_json();
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptrDst.parent_pointer().empty() && !m_document[ptrDst.parent_pointer()].is_object()
+                 && !(m_document[ptrDst.parent_pointer()].is_array() && is_index(ptrDst.back())))
+        {
+            m_document[ptrDst.parent_pointer()] = nlohmann::ordered_json::object();
         }
 
-        // set the value at the pointer path
-        try
+        if (!m_document.contains(ptrSrc))
         {
-            m_document[ptrBase] = m_document[ptrReference];
+            m_document[ptrDst] = nlohmann::ordered_json();
         }
-        catch (const std::exception& ex)
+        else
         {
-            throw std::runtime_error("Failed to set value: " + std::string(ex.what()));
+            // set the value at the pointer path
+            try
+            {
+                m_document[ptrDst] = m_document[ptrSrc];
+            }
+            catch (const std::exception& ex)
+            {
+                throw std::runtime_error("Failed to set value: " + std::string(ex.what()));
+            }
         }
     }
 
@@ -1428,7 +1447,7 @@ public:
      */
     size_t size(std::string_view path = "") const
     {
-        if (path.empty() && (m_document.is_array() || m_document.is_object()))
+        if (path.empty() && (m_document.is_array() || m_document.is_object() || m_document.is_string()))
         {
             return m_document.size();
         }
@@ -1660,12 +1679,18 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
 
-        m_document[ptr] = nullptr;
+        m_document[ptr] = nlohmann::ordered_json();
     }
 
     /**
@@ -1681,7 +1706,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1702,7 +1733,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1723,7 +1760,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1744,7 +1787,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1765,7 +1814,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1786,7 +1841,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1806,7 +1867,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1826,7 +1893,13 @@ public:
     {
         nlohmann::ordered_json::json_pointer ptr {path.data()};
 
-        if (!ptr.parent_pointer().empty() && m_document[ptr.parent_pointer()].is_array() && !is_index(ptr.back()))
+        if (ptr.parent_pointer().empty() && !m_document.is_object()
+            && !(m_document.is_array() && is_index(ptr.to_string())))
+        {
+            m_document = nlohmann::ordered_json::object();
+        }
+        else if (!ptr.parent_pointer().empty() && !m_document[ptr.parent_pointer()].is_object()
+                 && !(m_document[ptr.parent_pointer()].is_array() && is_index(ptr.back())))
         {
             m_document[ptr.parent_pointer()] = nlohmann::ordered_json::object();
         }
@@ -1899,20 +1972,24 @@ public:
         {
             try
             {
-                auto it = m_document.erase(m_document.begin());
-                result = (it == m_document.end());
+                m_document.erase(m_document.begin());
+                m_document = nlohmann::ordered_json();
+                result = m_document.empty();
             }
             catch (...)
             {
             }
-            m_document = nlohmann::ordered_json();
         }
         else
         {
             nlohmann::ordered_json::json_pointer ptr {path.data()};
             try
             {
-                result = m_document[ptr.parent_pointer()].erase(ptr.back()) > 0 ? true : false;
+                if (m_document.contains(ptr))
+                {
+                    m_document[ptr.parent_pointer()].erase(ptr.back());
+                    result = !(m_document.contains(ptr));
+                }
             }
             catch (...)
             {

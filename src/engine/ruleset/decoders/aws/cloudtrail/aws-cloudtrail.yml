@@ -99,7 +99,7 @@ normalize:
 
       - timestamp: $~json.aws.eventTime
 
-      - user_agent: $~json.aws.userAgent
+      # - user_agent: $~json.aws.userAgent
       - user_agent.original: $~json.aws.userAgent
       - user.id: $~json.aws.userIdentity.principalId
 
