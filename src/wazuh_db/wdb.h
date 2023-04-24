@@ -428,7 +428,6 @@ extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
 extern char *schema_upgrade_v9_sql;
 extern char *schema_upgrade_v10_sql;
-extern char *schema_upgrade_v11_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
