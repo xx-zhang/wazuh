@@ -154,7 +154,7 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 			return report
 		case <-tick.C:
 			// Calculate the eps
-			fmt.Printf("EPS: %10d\n", eps)
+			// fmt.Printf("EPS: %10d\n", eps)
 			eps = 0
 		default:
 			// Send the batch
