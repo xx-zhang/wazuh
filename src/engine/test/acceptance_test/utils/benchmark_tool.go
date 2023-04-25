@@ -147,7 +147,7 @@ func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 
 		case <-timeout:
 			report.endTime = time.Now()
-			fmt.Printf("EPS: %10d\n", eps)
+			// fmt.Printf("EPS: %10d\n", eps)
 			// Wait a grace period to process the last events and flush the queue
 			time.Sleep(time.Second * 5)
 			report.proccessEvents = fileLineCounter(config.dstFile)
@@ -203,12 +203,11 @@ func printReport(report rateReport, config rateConfig) {
 	fmt.Printf("Output:  %s\n", config.dstFile)
 	fmt.Printf("\n")
 
-	fmt.Printf("Results:\n")
-	fmt.Printf("Duration:         %10f seconds\n", report.endTime.Sub(report.startTime).Seconds())
-	fmt.Printf("Sent events:      %10v\n", report.totalEvents)
-
-	fmt.Printf("Processed events: %10v\n", report.proccessEvents)
-	fmt.Printf("Lost events:      %10v\n", report.totalEvents-report.proccessEvents)
+	fmt.Printf("Results (sent,lost,processed,duration):\n")
+	fmt.Printf("%10v\n", report.totalEvents)
+	fmt.Printf("%10v\n", report.totalEvents-report.proccessEvents)
+	fmt.Printf("%10v\n", report.proccessEvents)
+	fmt.Printf("%10f\n", report.endTime.Sub(report.startTime).Seconds())
 	fmt.Printf("\n")
 
 }
