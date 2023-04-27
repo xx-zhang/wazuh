@@ -142,6 +142,8 @@ def query_api(hash, apikey):
 def request_virustotal_info(alert, apikey):
     request_ok = False
     alert_output = {}
+    alert_output["virustotal"] = {}
+    alert_output["integration"] = "virustotal"
 
     # If there is no syscheck block present in the alert. Exit.
     if not "syscheck" in alert:
@@ -178,8 +180,6 @@ def request_virustotal_info(alert, apikey):
         exit(0)
 
     # Create alert
-    alert_output["virustotal"] = {}
-    alert_output["integration"] = "virustotal"
     alert_output["virustotal"]["found"] = 0
     alert_output["virustotal"]["malicious"] = 0
     alert_output["virustotal"]["source"] = {}
