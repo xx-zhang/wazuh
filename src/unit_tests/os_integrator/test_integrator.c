@@ -118,7 +118,7 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Running: integrations /tmp/virustotal-1111-2222.alert 123456   > /dev/null 2>&1");
+    expect_string(__wrap__mdebug1, formatted_msg, "Running: integrations /tmp/virustotal-1111-2222.alert 123456   0 0 > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 
@@ -151,7 +151,7 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Running: integrations /tmp/pagerduty-1111-2222.alert 123456   > /dev/null 2>&1");
+    expect_string(__wrap__mdebug1, formatted_msg, "Running: integrations /tmp/pagerduty-1111-2222.alert 123456   0 0 > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 
