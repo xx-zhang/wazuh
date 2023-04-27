@@ -392,12 +392,18 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             }
 
             int dbg_lvl = isDebug();
-            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", INTEGRATORDIR, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s %d %d", INTEGRATORDIR,
+                                                                     exec_tmp_file,
+                                                                     integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey,
+                                                                     integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl,
+                                                                     dbg_lvl <= 0 ? "" : "debug",
+                                                                     integrator_config[s]->timeout,
+                                                                     integrator_config[s]->retries);
             if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
             mdebug1("Running: %s", exec_full_cmd);
 
-            char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+            char **cmd = OS_StrBreak(' ', exec_full_cmd, 7);
 
             if(cmd) {
                 wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);

@@ -25,6 +25,8 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     char *xml_integrator_location = "event_location";
     char *xml_integrator_max_log = "max_log";
     char *xml_integrator_alert_format = "alert_format";
+    char *xml_integrator_timeout = "timeout";
+    char *xml_integrator_retries = "retries";
 
     IntegratorConfig **integrator_config = *(IntegratorConfig ***)config;
 
@@ -52,6 +54,8 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
     integrator_config[s]->level = 0;
     integrator_config[s]->enabled = 0;
     integrator_config[s]->max_log = 165;
+    integrator_config[s]->timeout = 10;
+    integrator_config[s]->retries = 3;
 
     while(node[i])
     {
@@ -166,7 +170,9 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
         else if(strcmp(node[i]->element, xml_integrator_group) == 0)
         {
             os_strdup(node[i]->content, integrator_config[s]->group);
-        } else if (strcmp(node[i]->element, xml_integrator_max_log) == 0) {
+        }
+        else if (strcmp(node[i]->element, xml_integrator_max_log) == 0)
+        {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR,node[i]->element, node[i]->content);
                 return(OS_INVALID);
@@ -178,7 +184,28 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
                 merror(XML_VALUEERR,node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
-        } else
+        }
+        else if (strcmp(node[i]->element, xml_integrator_timeout) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+
+            integrator_config[s]->timeout = atoi(node[i]->content);
+        }
+        else if (strcmp(node[i]->element, xml_integrator_retries) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+
+            integrator_config[s]->retries = atoi(node[i]->content);
+        }
+        else
         {
             merror(XML_INVELEM, node[i]->element);
             return(OS_INVALID);
