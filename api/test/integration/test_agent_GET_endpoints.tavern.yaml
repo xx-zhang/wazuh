@@ -2752,7 +2752,7 @@ stages:
           <<: *get_groups_answer
 
 ---
-test_name: GET /groups/{group_id}/agents
+test_name: GET /groups/{group_name}/agents
 
 stages:
 
@@ -3113,7 +3113,7 @@ stages:
         <<: *error_spec
 
 ---
-test_name: GET /groups/{group_id}/agents {sort,select}
+test_name: GET /groups/{group_name}/agents {sort,select}
 
 marks:
   - parametrize:
@@ -3183,7 +3183,7 @@ stages:
       status_code: 200
 
 ---
-test_name: GET /groups/{group_id}/configuration
+test_name: GET /groups/{group_name}/configuration
 
 stages:
 
@@ -3312,7 +3312,7 @@ stages:
       status_code: 400
 
 ---
-test_name: GET /groups/{group_id}/files
+test_name: GET /groups/{group_name}/files
 
 stages:
 
@@ -3540,7 +3540,7 @@ stages:
         <<: *error_spec
 
 ---
-test_name: GET /groups/{group_id}/files filter hash
+test_name: GET /groups/{group_name}/files filter hash
 
 marks:
   - parametrize:
@@ -3580,7 +3580,7 @@ stages:
           failed_items: []
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_name}/files/{filename}/json
 
 stages:
 
@@ -3620,7 +3620,7 @@ stages:
         <<: *error_spec
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/xml
+test_name: GET /groups/{group_name}/files/{filename}/xml
 
 stages:
 

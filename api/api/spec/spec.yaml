@@ -2096,9 +2096,9 @@ components:
     Mitre_tactic_id:
       type: string
       description: "MITRE tactic ID"
-    Mitre_group_id:
+    Mitre_group_name:
       type: string
-      description: "MITRE group ID"
+      description: "MITRE group name"
     Mitre_software_id:
       type: string
       description: "MITRE software ID"
@@ -5502,16 +5502,16 @@ components:
       schema:
         type: string
         format: alphanumeric
-    group_id:
+    group_name:
       in: path
-      name: group_id
+      name: group_name
       description: "Group ID. (Name of the group)"
       required: true
       schema:
         $ref: '#/components/schemas/GroupID'
-    group_id_query:
+    group_name_query:
       in: query
-      name: group_id
+      name: group_name
       description: "Group ID. (Name of the group)"
       required: true
       schema:
@@ -5662,14 +5662,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Mitre_tactic_id'
-    mitre_group_ids:
+    mitre_group_names:
       in: query
-      name: 'group_ids'
+      name: 'group_names'
       description: "List of MITRE's group IDs (separated by comma)"
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Mitre_group_id'
+          $ref: '#/components/schemas/Mitre_group_name'
     mitre_software_ids:
       in: query
       name: 'software_ids'
@@ -7521,7 +7521,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/group/{group_id}:
+  /agents/{agent_id}/group/{group_name}:
     delete:
       tags:
         - Agents
@@ -7536,7 +7536,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
       responses:
         '200':
           description: "Remove agent from a group"
@@ -7572,7 +7572,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
         - $ref: '#/components/parameters/force_single_group'
       responses:
         '200':
@@ -8087,7 +8087,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_all'
-        - $ref: '#/components/parameters/group_id_query'
+        - $ref: '#/components/parameters/group_name_query'
       responses:
         '200':
           description: "Remove multiple agents assignment from a single group"
@@ -8138,7 +8138,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/group_id_query'
+        - $ref: '#/components/parameters/group_name_query'
         - $ref: '#/components/parameters/force_single_group'
       responses:
         '200':
@@ -8182,7 +8182,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/group/{group_id}/restart:
+  /agents/group/{group_name}/restart:
     put:
       tags:
         - Agents
@@ -8194,7 +8194,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
       responses:
         '200':
           description: Agents restarted
@@ -8355,15 +8355,15 @@ paths:
             schema:
               type: object
               properties:
-                group_id:
+                group_name:
                   description: "Group name. It can contain any of the characters between a-z, A-Z, 0-9, '_', '-' and '.'. Names '.' and '..' are restricted."
                   type: string
                   format: group_names
                   maxLength: 128
               required:
-                - group_id
+                - group_name
             example:
-              group_id: NewGroup_1
+              group_name: NewGroup_1
       responses:
         '200':
           description: "Add new agent"
@@ -8385,7 +8385,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /groups/{group_id}/agents:
+  /groups/{group_name}/agents:
     get:
       tags:
         - Groups
@@ -8398,7 +8398,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
@@ -8514,7 +8514,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /groups/{group_id}/configuration:
+  /groups/{group_name}/configuration:
     get:
       tags:
         - Groups
@@ -8526,7 +8526,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
       responses:
@@ -8594,7 +8594,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
       requestBody:
         required: true
         content:
@@ -8631,7 +8631,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /groups/{group_id}/files:
+  /groups/{group_name}/files:
     get:
       tags:
         - Groups
@@ -8643,7 +8643,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -8702,7 +8702,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /groups/{group_id}/files/{file_name}/json:
+  /groups/{group_name}/files/{file_name}/json:
     get:
       tags:
         - Groups
@@ -8714,7 +8714,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
         - $ref: '#/components/parameters/file_name'
         - $ref: '#/components/parameters/type_agents'
       responses:
@@ -8763,7 +8763,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /groups/{group_id}/files/{file_name}/xml:
+  /groups/{group_name}/files/{file_name}/xml:
     get:
       tags:
         - Groups
@@ -8775,7 +8775,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/group_name'
         - $ref: '#/components/parameters/file_name'
         - $ref: '#/components/parameters/type_agents'
       responses:
@@ -13009,7 +13009,7 @@ paths:
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'
       parameters:
-        - $ref: '#/components/parameters/mitre_group_ids'
+        - $ref: '#/components/parameters/mitre_group_names'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
