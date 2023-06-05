@@ -40,7 +40,7 @@ async def test_show_groups(print_mock):
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         await agent_groups.show_groups()
         forward_mock.has_calls([call(func=agent.get_agent_groups, kwargs={}),
-                                call(func=agent.get_agents, f_kwargs={'q': 'id!=000;group=null'})])
+                                call(func=agent.get_agents, f_kwargs={'q': 'id!=000'})])
         print_mock.assert_has_calls([call('Groups (2):'), call('  a (1)'),
                                      call('  b (2)'), call('Unassigned agents: 2.')])
 

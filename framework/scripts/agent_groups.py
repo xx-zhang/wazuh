@@ -51,7 +51,7 @@ async def show_groups():
     """Show all the groups and the number of agents that belong to each one."""
     groups = await cluster_utils.forward_function(func=agent.get_agent_groups, f_kwargs={})
     unassigned_agents = await cluster_utils.forward_function(func=agent.get_agents,
-                                                             f_kwargs={'q': 'id!=000;group=null'})
+                                                             f_kwargs={'q': 'id!=000'})
 
     check_if_exception(groups)
     check_if_exception(unassigned_agents)
