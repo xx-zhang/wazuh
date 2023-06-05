@@ -398,7 +398,9 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
     with WazuhDBQueryAgentGroupRelationships(query=group_query, select=["id_agent"]) as db_query:
         data = db_query.run()
         for item in data['items']:
-            agent_list.append(str(item['id_agent']))
+            # Some ids are retrieved without the initial zeros
+            id_agent = str(item['id_agent']).rjust(3, '0')
+            agent_list.append(id_agent)
 
     return get_agents(agent_list=agent_list, offset=offset, limit=limit, sort=sort, search=search, select=select,
                       filters=filters, q=q)
