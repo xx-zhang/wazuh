@@ -1556,14 +1556,16 @@ async def get_agent_no_group(request, pretty: bool = False, wait_for_complete: b
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
+    f_kwargs = {'group_list': ['null'],
+                'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': 'id!=000' + (';' + q if q else '')}
+                'q': q,
+                }
 
-    dapi = DistributedAPI(f=agent.get_agents,
+    dapi = DistributedAPI(f=agent.get_agents_in_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

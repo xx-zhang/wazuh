@@ -1058,14 +1058,15 @@ async def test_insert_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     """Verify 'get_agent_no_group' endpoint is working as expected."""
     result = await get_agent_no_group(request=mock_request)
-    f_kwargs = {'offset': 0,
+    f_kwargs = {'group_list': ['null'],
+                'offset': 0,
                 'limit': DATABASE_LIMIT,
                 'select': None,
                 'sort': None,
                 'search': None,
-                'q': 'id!=000;group=null'
+                'q': None
                 }
-    mock_dapi.assert_called_once_with(f=agent.get_agents,
+    mock_dapi.assert_called_once_with(f=agent.get_agents_in_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
                                       is_async=False,
