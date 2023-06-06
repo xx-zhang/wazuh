@@ -1525,3 +1525,26 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
      for agent_info in data['data']]
 
     return data
+
+def get_agent_group_list(agent_id: str) -> list:
+    """Get the names of the groups a specific agent is part of.
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+
+    Returns
+    -------
+    list
+        A list with the groups names.
+    """
+    agent_groups = []
+    query = 'id_agent=' + agent_id
+
+    with WazuhDBQueryAgentGroupRelationships(query=query, select=['name_group']) as db_query:
+        groups_data = db_query.run()
+        for rel_item in groups_data['items']:
+            agent_groups.append(rel_item['name_group'])
+
+    return agent_groups

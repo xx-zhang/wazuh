@@ -1398,3 +1398,13 @@ def test_create_upgrade_tasks(mock_upgrade, eligible_agents, expected_calls, tas
                                 {'data': [{'error': 0}]}, {'data': [{'error': 0}]}, {'data': [{'error': 0}]}]
     create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test')
     mock_upgrade.assert_has_calls(expected_calls, any_order=False)
+
+@pytest.mark.parametrize('agent_id, expected_groups', [
+    ('1', ['group-1']),
+    ('2', ['group-2'])
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_agent_group_list(socket_mock, send_mock, agent_id, expected_groups):
+    got_groups = get_agent_group_list(agent_id)
+    assert got_groups == expected_groups

@@ -11,7 +11,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
-    WazuhDBQueryAgentGroupRelationships
+    WazuhDBQueryAgentGroupRelationships, get_agent_group_list
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -340,11 +340,23 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
             if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
 
+        # TODO: if just 'group' is selected, then select will be empty and thus return all fields
+        select_groups = False
+        if select is None or 'group' in select:
+            if select is not None:
+                # Remove 'group' from the list to avoid WazuhDBQueryAgents panicking when looking for the field
+                select.remove('group')
+            select_groups = True
+
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=q, **rbac_filters) as db_query:
-            data = db_query.run()
+                                query=q, **rbac_filters) as groups_db_query:
+            data = groups_db_query.run()
+
+            if select_groups:
+                for item in data['items']:
+                    item['group'] = get_agent_group_list(item['id'])
 
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
