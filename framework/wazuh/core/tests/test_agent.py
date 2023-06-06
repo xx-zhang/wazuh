@@ -435,42 +435,6 @@ def test_WazuhDBQueryAgentGroupRelationships__init__(socket_mock, send_mock, bac
         with pytest.raises(WazuhException, match=".* 2005 .*"):
             WazuhDBQueryAgentGroupRelationships()
 
-
-@pytest.mark.parametrize('field_filter, q_filter', [
-    ('field', {'value': '1', 'operator': '='}),
-    ('test', {'value': '1', 'operator': '!='}),
-    ('test', {'value': '1', 'operator': 'LIKE', 'field': 'name_group'}),
-])
-@patch('socket.socket.connect')
-def test_WazuhDBQueryAgentGroupRelationships_process_filter(mock_socket_conn, field_filter, q_filter):
-    """Tests _process_filter of WazuhDBQueryAgentGroupRelationships returns expected query
-
-    Parameters
-    ----------
-    field_filter : str
-        Defines field filters required by the user.
-    q_filter : dict
-        Query to filter in database.
-    """
-    query_agent = WazuhDBQueryAgentGroupRelationships()
-    try:
-        query_agent._process_filter('name_group', field_filter, q_filter)
-    except WazuhError as e:
-        assert e.code == 1409 and q_filter['operator'] not in {'=', '!=', 'LIKE'}
-        return
-
-    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
-    not_equal_regex = f"NOT {equal_regex}"
-    like_regex = r"[\w`]+ LIKE :\w+"
-    if q_filter['operator'] == '=':
-        assert re.search(equal_regex, query_agent.query)
-    elif q_filter['operator'] == '!=':
-        assert re.search(not_equal_regex, query_agent.query)
-    elif q_filter['operator'] == 'LIKE':
-        assert re.search(like_regex, query_agent.query)
-    else:
-        pytest.fail('Unexpected operator')
-
 @pytest.mark.parametrize('id, ip, name, key', [
     ('1', '127.0.0.1', 'test_agent', 'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747D'),
 ])
@@ -1146,8 +1110,8 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, remo
     """
     agent_id = '001'
     group_name = 'default'
-    wdb_command = r'global insert-agent-belong {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{' \
-        r'\"id_agent\":(.+),\"name_group\":(.+)}]}'
+    wdb_command = r'global set-agent-groups {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{' \
+        r'\"id\":(.+),\"groups\":\[\"(.+)\"\]}]}'
 
     # Default relationship -> add an agent to a group
     Agent.set_agent_group_relationship(agent_id, group_name, remove, override)

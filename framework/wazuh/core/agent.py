@@ -1097,8 +1097,11 @@ class Agent:
         else:
             mode = 'append' if not override else 'override'
 
-        command = f'global insert-agent-belong {{"mode":"{mode}","sync_status":"syncreq","data":[{{' \
-            f'"id_agent":{agent_id},"name_group":{group_name}}}]}}'
+        command = 'global set-agent-groups {' \
+                f'"mode":"{mode}","sync_status":"syncreq","data":' \
+                '[{' \
+                f'"id":{agent_id},"groups":["{group_name}"]' \
+                '}]}'
 
         wdb = WazuhDBConnection()
         try:
