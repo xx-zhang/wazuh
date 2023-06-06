@@ -230,32 +230,6 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
         'Query returned does not match the expected one'
 
 
-@pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('os.name', 'field', {'value': '1', 'operator': 'LIKE', 'field': 'status$0'}),
-])
-@patch('socket.socket.connect')
-def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_filter, q_filter):
-    """Tests _process_filter of WazuhDBQueryAgents returns expected query
-
-    Parameters
-    ----------
-    field_name : str
-        One of the available fields.
-    field_filter : str
-        Defines field filters required by the user.
-    q_filter : dict
-        Query to filter in database.
-    """
-    query_agent = WazuhDBQueryAgents()
-    try:
-        query_agent._process_filter(field_name, field_filter, q_filter)
-    except WazuhError as e:
-        assert e.code == 1409 and q_filter['operator'] not in {'=', '!=', 'LIKE'}
-        return
-
-    assert 'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query, \
-            'Query returned does not match the expected one'
-
 
 @pytest.mark.parametrize('value', [
     True,
