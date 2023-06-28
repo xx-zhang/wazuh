@@ -229,3 +229,5 @@ services:
     entrypoint:
       - /scripts/entrypoint.sh
       - ${ENV_MODE}
+    depends_on:
+      - wazuh-master

@@ -324,6 +324,13 @@ def save_logs(test_name: str):
         except subprocess.CalledProcessError:
             continue
 
+    # Save nginx log
+    with open(os.path.join(test_logs_path, f'test_{test_name}-nginx-lb.log'), mode='w') as f_log:
+        current_process = subprocess.Popen(
+                ["docker", "logs", "env_nginx-lb_1"],
+                stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process.wait()
+
 
 @pytest.fixture(scope='session', autouse=True)
 def api_test(request: _pytest.fixtures.SubRequest):
@@ -345,7 +352,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        # down_env()
+        down_env()
 
     # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
     mode = request.node.config.getoption("-m")
