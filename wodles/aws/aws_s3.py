@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-# Import AWS S3
-#
 # Copyright (C) 2015, Wazuh Inc.
-# Copyright: GPLv3
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 #
-# Updated by Jeremy Phillips <jeremy@uranusbytes.com>
 #
 # Error Codes:
 #   1 - Unknown
