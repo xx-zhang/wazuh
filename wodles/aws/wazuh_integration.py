@@ -77,7 +77,8 @@ class WazuhIntegration:
         if not path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
             args['config'] = botocore.config.Config(retries=WAZUH_DEFAULT_RETRY_CONFIGURATION.copy())
             aws_tools.debug(
-                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                f"Generating default configuration for retries: mode {args['config'].retries['mode']} "
+                f"- max_attempts {args['config'].retries['max_attempts']}",
                 2)
         else:
             aws_tools.debug(
