@@ -20,7 +20,6 @@
 #include <cmds/apiclnt/client.hpp>
 #include <logging/logging.hpp>
 
-
 namespace cmd::catalog
 {
 
@@ -41,6 +40,7 @@ struct Options
     bool abortOnError;
     std::string policy;
     std::string integration;
+    std::string role;
 };
 
 eCatalog::ResourceFormat toResourceFormat(const std::string& format)
@@ -115,9 +115,21 @@ void readCinIfEmpty(std::string& content)
     }
 }
 
+template<typename RequestType>
+void addRole(const std::string& role, RequestType& request)
+{
+    if (!role.empty())
+    {
+        request.set_role(role);
+    }
+}
+
 } // namespace
 
-void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
+void runGet(std::shared_ptr<apiclnt::Client> client,
+            const std::string& format,
+            const std::string& nameStr,
+            const std::string& role)
 {
     using RequestType = eCatalog::ResourceGet_Request;
     using ResponseType = eCatalog::ResourceGet_Response;
@@ -127,6 +139,7 @@ void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, 
     RequestType eRequest;
     eRequest.set_name(nameStr);
     eRequest.set_format(toResourceFormat(format));
+    addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -139,7 +152,8 @@ void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, 
 void runUpdate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& nameStr,
-               const std::string& content)
+               const std::string& content,
+               const std::string& role)
 {
     using RequestType = eCatalog::ResourcePut_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -150,6 +164,7 @@ void runUpdate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_name(nameStr);
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
+    addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -160,7 +175,8 @@ void runUpdate(std::shared_ptr<apiclnt::Client> client,
 void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& format,
                const std::string& resourceTypeStr,
-               const std::string& content)
+               const std::string& content,
+               const std::string& role)
 {
     using RequestType = eCatalog::ResourcePost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -171,6 +187,7 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_type(toResourceType(resourceTypeStr));
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
+    addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -178,7 +195,10 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
     utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 }
 
-void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
+void runDelete(std::shared_ptr<apiclnt::Client> client,
+               const std::string& format,
+               const std::string& nameStr,
+               const std::string& role)
 {
     using RequestType = eCatalog::ResourceDelete_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -187,6 +207,7 @@ void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& forma
     // Prepare the request
     RequestType eRequest;
     eRequest.set_name(nameStr);
+    addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -197,7 +218,8 @@ void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& forma
 void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,
                  const std::string& resourceType,
-                 const std::string& content)
+                 const std::string& content,
+                 const std::string& role)
 {
     using RequestType = eCatalog::ResourceValidate_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -208,6 +230,7 @@ void runValidate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_name(resourceType);
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
+    addRole(role, eRequest);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -220,9 +243,9 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
              const std::string& resourceTypeStr,
              const std::string& path,
              bool recursive,
-             bool abortOnError)
+             bool abortOnError,
+             const std::string& role)
 {
-
 
     using RequestType = eCatalog::ResourcePost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -313,6 +336,7 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
             eRequest.set_type(type);
             eRequest.set_format(format);
             eRequest.set_content(content);
+            addRole(role, eRequest);
 
             try
             {
@@ -391,6 +415,9 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_LOG_LEVEL)
         ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}));
 
+    // RBAC role
+    catalogApp->add_option("-r, --role", options->role, "Sets the RBAC role.")->default_val(ENGINE_RBAC_ROLE);
+
     // Shared option definitions among subcommands
     auto name = "name";
     std::string nameDesc = "Name that identifies the ";
@@ -403,7 +430,7 @@ void configure(CLI::App_p app)
     auto get_subcommand =
         catalogApp->add_subcommand("get", "get item-type[/item-id[/item-version]]: Get an item or list a collection.");
     get_subcommand->add_option(name, options->name, nameDesc + "collection to list: item-type[/item-id]")->required();
-    get_subcommand->callback([options, client]() { runGet(client, options->format, options->name); });
+    get_subcommand->callback([options, client]() { runGet(client, options->format, options->name, options->role); });
 
     // update
     auto update_subcommand =
@@ -415,7 +442,7 @@ void configure(CLI::App_p app)
         [options, client]()
         {
             readCinIfEmpty(options->content);
-            runUpdate(client, options->format, options->name, options->content);
+            runUpdate(client, options->format, options->name, options->content, options->role);
         });
 
     // create
@@ -428,7 +455,7 @@ void configure(CLI::App_p app)
         [options, client]()
         {
             readCinIfEmpty(options->content);
-            runCreate(client, options->format, options->name, options->content);
+            runCreate(client, options->format, options->name, options->content, options->role);
         });
 
     // delete
@@ -437,7 +464,8 @@ void configure(CLI::App_p app)
     delete_subcommand
         ->add_option(name, options->name, nameDesc + "item or collection to delete: item-type[/item-id[/version]]")
         ->required();
-    delete_subcommand->callback([options, client]() { runDelete(client, options->format, options->name); });
+    delete_subcommand->callback([options, client]()
+                                { runDelete(client, options->format, options->name, options->role); });
 
     // validate
     auto validate_subcommand =
@@ -449,7 +477,7 @@ void configure(CLI::App_p app)
         [options, client]()
         {
             readCinIfEmpty(options->content);
-            runValidate(client, options->format, options->name, options->content);
+            runValidate(client, options->format, options->name, options->content, options->role);
         });
 
     // load
@@ -471,6 +499,14 @@ void configure(CLI::App_p app)
     load_subcommand->add_flag("-a, --abort", options->abortOnError, "Abort on error.");
     load_subcommand->callback(
         [options, client]()
-        { runLoad(client, options->format, options->name, options->path, options->recursive, options->abortOnError); });
+        {
+            runLoad(client,
+                    options->format,
+                    options->name,
+                    options->path,
+                    options->recursive,
+                    options->abortOnError,
+                    options->role);
+        });
 }
 } // namespace cmd::catalog
