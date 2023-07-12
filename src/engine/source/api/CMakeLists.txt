@@ -58,4 +58,5 @@ target_link_libraries(api
     store::istore
     yaml-cpp
     schemf
+    rbac::irbac
 )
