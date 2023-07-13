@@ -7,6 +7,8 @@
 
 #include <api/adapter.hpp>
 
+#include <api/pipelineHandler.hpp>
+
 namespace api::catalog::handlers
 {
 
@@ -70,9 +72,13 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog)
     };
 }
 
-api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
+class Get : public api::PipelineHandler<api::wpRequest, api::wpResponse>
 {
-    return [catalog](api::wpRequest wRequest) -> api::wpResponse
+
+protected:
+    std::shared_ptr<Catalog> m_catalog;
+
+    api::wpResponse impHandle(api::wpRequest& wRequest, api::wpResponse&&) override
     {
         using RequestType = eCatalog::ResourceGet_Request;
         using ResponseType = eCatalog::ResourceGet_Response;
@@ -117,7 +123,7 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        auto query = catalog->getResource(targetResource);
+        auto query = m_catalog->getResource(targetResource);
         if (std::holds_alternative<base::Error>(query))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(query).message);
@@ -128,6 +134,18 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
         return ::api::adapter::toWazuhResponse(eResponse);
+    }
+
+public:
+    Get(std::shared_ptr<Catalog> catalog) : m_catalog {catalog} {}
+};
+
+api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
+{
+    auto handler = std::make_shared<Get>(catalog);
+    return [handler = std::move(handler)](api::wpRequest wRequest) -> api::wpResponse
+    {
+        return handler->handle(wRequest, api::wpResponse());
     };
 }
 
