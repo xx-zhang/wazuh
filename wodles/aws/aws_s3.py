@@ -100,7 +100,6 @@ RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
 
-
 ALL_REGIONS = [
     'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2',
     'ap-south-1', 'eu-central-1', 'eu-west-1'
@@ -266,7 +265,6 @@ class WazuhIntegration:
                                       iam_role_duration=iam_role_duration,
                                       external_id=external_id
                                       )
-
 
         if hasattr(self, 'db_name'):  # If db_name is present, the subclass is not part of the SecLake process
             # db_name is an instance variable of subclass
@@ -513,8 +511,15 @@ class WazuhIntegration:
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg if dump_json else msg).encode())
+
+            encoded_msg = "{header}{msg}".format(header=self.msg_header,
+                                                 msg=json_msg if dump_json else msg).encode()
+
+            # Logs warning if event is bigger than max size
+            if len(encoded_msg) > MAX_EVENT_SIZE:
+                debug(f"WARNING: : Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+
+            s.send(encoded_msg)
             s.close()
         except socket.error as e:
             if e.errno == 111:
@@ -1830,7 +1835,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
 
 class AWSCustomBucket(AWSBucket):
-
     empty_bucket_message_template = "+++ No logs to process in bucket: {bucket}"
 
     def __init__(self, db_table_name=None, **kwargs):
