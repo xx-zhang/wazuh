@@ -8,6 +8,6 @@ DATA_PATH = Path(Path(__file__).parent, 'data')
 CONFIGS_PATH = Path(DATA_PATH, 'config_templates')
 TEST_CASES_PATH = Path(DATA_PATH, 'test_cases')
 
-SERVER_ADDRESS = '10.6.0.2'
+SERVER_ADDRESS = 'localhost'
 CRYPTO = 'aes'
 PROTOCOL = 'tcp'

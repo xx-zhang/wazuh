@@ -67,4 +67,4 @@ jobs:
       - name: Run rootcheck integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 test_rootcheck/
+          sudo python -m pytest --tier 0 -vvx test_rootcheck/
