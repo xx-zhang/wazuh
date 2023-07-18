@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -37,19 +38,19 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSCHECK="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_ROOTCHECK="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SCA="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_SYSLOG="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -63,8 +64,8 @@ jobs:
           git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run office365 integration tests.
+      # Run rootcheck integration tests.
       - name: Run rootcheck integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 -vvx test_rootcheck/
+          sudo python -m pytest -s --tier 0 -vvx test_rootcheck/

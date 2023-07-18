@@ -43,9 +43,7 @@ tags:
 
 import json
 import os
-
 import time
-
 import pytest
 from pathlib import Path
 
@@ -53,9 +51,7 @@ from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH 
 
 from wazuh_testing.constants.paths.sockets import QUEUE_DB_PATH, WAZUH_DB_SOCKET_PATH
-# from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.tools.simulators.agent_simulator import Sender, Injector, create_agents
-# from wazuh_testing.tools.file import truncate_file
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.database import get_sqlite_query_result
@@ -86,7 +82,6 @@ def send_delete_table_request(agent_id):
     controller.send(f'agent {agent_id} rootcheck delete', size=True)
     response = controller.receive(size=True)
     return response
-
 
 # Configuration and cases data.
 test_configs_path = Path(CONFIGS_PATH, 'config_template.yaml')
@@ -150,6 +145,7 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
         - Rootcheck events were not deleted
 
     ''' 
+    # Use systemctl command to check service status
     agents = create_agents(test_metadata["agents_number"], SERVER_ADDRESS, CRYPTO)
 
     for agent in agents:
