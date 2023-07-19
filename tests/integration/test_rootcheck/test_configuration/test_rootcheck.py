@@ -153,7 +153,7 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
 
     injectors = create_injectors(agents)
 
-    # Let rootcheck events to be sent for 60 seconds
+    # Let rootcheck events to be sent for 90 seconds
     time.sleep(90)
    
     for injector in injectors:
@@ -176,9 +176,7 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
             json_lines = [json.loads(x) for x in f.readlines()]
             alerts_description = [x['full_log'] for x in json_lines
                                   if 'rootcheck' in x['decoder']['name']]
-            print("Alert:", alerts_description)
             for log in logs_string:
-                print("Log:", log)
                 if log not in ['Starting rootcheck scan.',
                                'Ending rootcheck scan.']:
                     assert log in alerts_description, f"Log: \"{log}\" " \
