@@ -49,13 +49,12 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH 
-
 from wazuh_testing.constants.paths.sockets import QUEUE_DB_PATH, WAZUH_DB_SOCKET_PATH
 from wazuh_testing.tools.simulators.agent_simulator import Sender, Injector, create_agents
 from wazuh_testing.tools.socket_controller import SocketController
-from wazuh_testing.utils.services import control_service
-from wazuh_testing.utils.database import get_sqlite_query_result
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.database import get_sqlite_query_result
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH, SERVER_ADDRESS, CRYPTO, PROTOCOL 
 
@@ -83,6 +82,7 @@ def send_delete_table_request(agent_id):
     response = controller.receive(size=True)
     return response
 
+    
 # Configuration and cases data.
 test_configs_path = Path(CONFIGS_PATH, 'config_template.yaml')
 test_cases_path = Path(TEST_CASES_PATH, 'cases_configuration.yaml')
@@ -153,14 +153,15 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
 
     injectors = create_injectors(agents)
 
-    # Let rootcheck events to be sent for 90 seconds
-    time.sleep(90)
+    # Let rootcheck events to be sent for 60 seconds
+    time.sleep(60)
    
     for injector in injectors:
         injector.stop_receive()
 
     # Service needs to be stopped otherwise db lock will be held by Wazuh db
     control_service('stop')
+    time.sleep(10)
 
     # Check that logs have been added to the sql database
     for agent in agents:
@@ -172,15 +173,31 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
             assert log in db_string, f"Log: \"{log}\" not found in Database"
 
         alerts_description = None
-        with open(ALERTS_JSON_PATH, 'r') as f:
-            json_lines = [json.loads(x) for x in f.readlines()]
-            alerts_description = [x['full_log'] for x in json_lines
-                                  if 'rootcheck' in x['decoder']['name']]
-            for log in logs_string:
-                if log not in ['Starting rootcheck scan.',
-                               'Ending rootcheck scan.']:
-                    assert log in alerts_description, f"Log: \"{log}\" " \
-                                                      "not found in alerts file"
+        print("Get json_lines...")    
+        
+        
+        def find_matching_lines(file_path, search_term):
+            with open(file_path, "r") as file:
+                for line in file:
+                    if search_term in line:
+                        yield line
+
+        # Example usage
+        search_term = "rootcheck"
+        matching_lines = list(find_matching_lines(ALERTS_JSON_PATH, search_term))
+        json_lines = [ json.loads(line.strip()) for line in matching_lines ]
+        
+        
+        # with open(ALERTS_JSON_PATH, 'r') as f:
+        #     json_lines = [ json.loads(line.strip()) for line in f ]
+        print("Get json_lines.Done")
+        alerts_description = [x['full_log'] for x in json_lines
+                              if 'rootcheck' in x['decoder']['name']]
+        for log in logs_string:
+            if log not in ['Starting rootcheck scan.',
+                           'Ending rootcheck scan.']:
+                assert log in alerts_description, f"Log: \"{log}\" " \
+                                                  "not found in alerts file"
 
     if test_metadata["check_updates"]:
         # Service needs to be restarted
