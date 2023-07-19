@@ -173,6 +173,8 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
 
         alerts_description = None
         with open(ALERTS_JSON_PATH, 'r') as f:
+            for x in f.readlines():
+                print(x)
             json_lines = [json.loads(x) for x in f.readlines()]
             alerts_description = [x['full_log'] for x in json_lines
                                   if 'rootcheck' in x['decoder']['name']]
