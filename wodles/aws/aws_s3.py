@@ -517,7 +517,7 @@ class WazuhIntegration:
 
             # Logs warning if event is bigger than max size
             if len(encoded_msg) > MAX_EVENT_SIZE:
-                debug(f"WARNING: : Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+                debug(f"WARNING: : Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.", 1)
 
             s.send(encoded_msg)
             s.close()
