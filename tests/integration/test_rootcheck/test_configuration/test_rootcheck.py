@@ -6,8 +6,8 @@ copyright: Copyright (C) 2015-2023, Wazuh Inc.
 type: integration
 
 brief: The 'rootcheck' tool allows to define policies in order to check if the agents
-       meet the requirement specified. The rootcheck engine can check if a process is running, if a file is 
-       present and if the content of a file contains a pattern, 
+       meet the requirement specified. The rootcheck engine can check if a process is running, if a file is
+       present and if the content of a file contains a pattern,
        or if a Windows registry key contains a string or is simply present.
 
 components:
@@ -48,7 +48,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths import WAZUH_PATH
-from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH 
+from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
 from wazuh_testing.constants.paths.sockets import QUEUE_DB_PATH, WAZUH_DB_SOCKET_PATH
 from wazuh_testing.tools.simulators.agent_simulator import Sender, Injector, create_agents
 from wazuh_testing.tools.socket_controller import SocketController
@@ -56,7 +56,7 @@ from wazuh_testing.utils import configuration
 from wazuh_testing.utils.database import get_sqlite_query_result
 from wazuh_testing.utils.services import control_service
 
-from . import CONFIGS_PATH, TEST_CASES_PATH, SERVER_ADDRESS, CRYPTO, PROTOCOL 
+from . import CONFIGS_PATH, TEST_CASES_PATH, SERVER_ADDRESS, CRYPTO, PROTOCOL
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
@@ -64,7 +64,7 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 def retrieve_rootcheck_rows(agent_id):
     agent_db_path = os.path.join(QUEUE_DB_PATH, f'{agent_id}.db')
     return get_sqlite_query_result(agent_db_path, "select * from pm_event")
-    
+
 def create_injectors(agents):
     injectors = []
     sender = Sender(SERVER_ADDRESS, protocol=PROTOCOL)
@@ -94,12 +94,13 @@ test_configuration = configuration.load_configuration_template(test_configs_path
 daemons_handler_configuration = {'all_daemons': True}
 
 # Test function.
-@pytest.mark.parametrize('test_configuration, test_metadata', 
+@pytest.mark.parametrize('test_configuration, test_metadata',
                          zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                   daemons_handler, wait_for_rootcheck_start):
+def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration,
+                   daemons_handler, wait_for_rootcheck_start, truncate_monitored_files
+                   ):
     '''
-    Testing with daemons_handler, 
+    Testing with daemons_handler,
     description: Check if the 'rootcheck' modules is working properly, that is, by checking if the created logs
                  are added, updated and deleted correctly.
                  For this purpose, the test will create a specific number of agents, and will check if they have
@@ -143,8 +144,7 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
         - Wazuh DB returned an error trying to delete the agent
         - Rootcheck events were not deleted
 
-    ''' 
-    # Use systemctl command to check service status
+    '''
     agents = create_agents(test_metadata["agents_number"], SERVER_ADDRESS, CRYPTO)
 
     for agent in agents:
@@ -154,7 +154,7 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
 
     # Let rootcheck events to be sent for 60 seconds
     time.sleep(60)
-   
+
     for injector in injectors:
         injector.stop_receive()
 
@@ -166,20 +166,24 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration, t
         rows = retrieve_rootcheck_rows(agent.id)
         db_string = [row[3] for row in rows]
         logs_string = [':'.join(x.split(':')[2:]) for x in
-                       agent.rootcheck.messages_list]
+                      agent.rootcheck.messages_list]
+
+        alerts_description = []
+        with open(ALERTS_JSON_PATH, 'r') as f:
+            for line in f:
+                if '"decoder":{"name":"rootcheck"}' in line:
+                    try:
+                        json_lines = json.loads(line.strip())
+                        alerts_description.append(json_lines['full_log'])
+                    except json.JSONDecodeError:
+                        print(f"Invalid json {line.strip()}")
+
         for log in logs_string:
             assert log in db_string, f"Log: \"{log}\" not found in Database"
-
-        alerts_description = None
-        with open(ALERTS_JSON_PATH, 'r') as f:
-            json_lines = [ json.loads(line.strip()) for line in f ]
-            alerts_description = [x['full_log'] for x in json_lines
-                                  if 'rootcheck' in x['decoder']['name']]
-            for log in logs_string:
-                if log not in ['Starting rootcheck scan.',
-                               'Ending rootcheck scan.']:
-                    assert log in alerts_description, f"Log: \"{log}\" " \
-                                                      "not found in alerts file"
+            if log not in ['Starting rootcheck scan.',
+                           'Ending rootcheck scan.']:
+                assert log in alerts_description, f"Log: \"{log}\" " \
+                                                  "not found in alerts file"
 
     if test_metadata["check_updates"]:
         # Service needs to be restarted
