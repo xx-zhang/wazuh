@@ -1337,6 +1337,11 @@ ifneq (${TARGET},winagent)
 endif
 endif
 
+ifeq (${TARGET},server)
+	# Server extra dependency
+	EXTERNAL_RES += rocksdb
+endif
+
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
