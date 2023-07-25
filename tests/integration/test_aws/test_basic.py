@@ -1,9 +1,11 @@
 import os
-
 import pytest
-from wazuh_testing import TEMPLATE_DIR, TEST_CASES_DIR, global_parameters
+
+
+from wazuh_testing import global_parameters
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
 from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.tools.configuration import (
+from wazuh_testing.utils.configuration import (
     get_test_cases_data,
     load_configuration_template,
 )

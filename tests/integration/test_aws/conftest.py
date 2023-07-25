@@ -13,7 +13,7 @@ from wazuh_testing.modules.aws.cloudwatch_utils import (
 )
 from wazuh_testing.modules.aws.db_utils import delete_s3_db, delete_services_db
 from wazuh_testing.modules.aws.s3_utils import delete_file, file_exists, upload_file
-from wazuh_testing.tools.services import control_service
+from wazuh_testing.utils.services import control_service
 
 
 @pytest.fixture
