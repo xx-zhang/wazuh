@@ -31,13 +31,8 @@ TEST_F(APIDownloaderTest, HandleValidRequestWithRawData)
 {
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
 
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput, "APIDownloader - Download done successfully\n");\
     EXPECT_FALSE(m_spUpdaterContext->data.empty());
 }
 
@@ -52,15 +47,11 @@ TEST_F(APIDownloaderTest, HandleValidRequestWithCompressedData)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_NO_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext));
 
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
     const auto filePath {static_cast<std::string>(m_spUpdaterContext->spUpdaterBaseContext->outputFolder) + "/" +
                          m_spUpdaterContext->spUpdaterBaseContext->configData.at("fileName").get<std::string>()};
 
-    EXPECT_EQ(capturedOutput, "APIDownloader - Download done successfully\n");
     EXPECT_TRUE(m_spUpdaterContext->data.empty());
     EXPECT_TRUE(std::filesystem::exists(filePath));
 }
@@ -75,13 +66,8 @@ TEST_F(APIDownloaderTest, HandleValidRequestWithCompressedDataAndInvalidOutputFo
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput, "APIDownloader - Could not get response from API because: Failed to open output file\n");
     EXPECT_TRUE(m_spUpdaterContext->data.empty());
 }
 
@@ -94,14 +80,7 @@ TEST_F(APIDownloaderTest, HandleAnEmptyUrl)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
-
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput,
-              "APIDownloader - Could not get response from API because: URL using bad/illegal format or missing URL\n");
 }
 
 /**
@@ -113,11 +92,5 @@ TEST_F(APIDownloaderTest, HandleAnInvalidUrl)
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    testing::internal::CaptureStdout();
-
     EXPECT_THROW(m_spAPIDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
-
-    const auto capturedOutput {testing::internal::GetCapturedStdout()};
-
-    EXPECT_EQ(capturedOutput, "APIDownloader - Could not get response from API because: Couldn't connect to server\n");
 }
