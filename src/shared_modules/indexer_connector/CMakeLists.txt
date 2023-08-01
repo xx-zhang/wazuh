@@ -26,9 +26,6 @@ include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)
 include_directories(${SHARED_MODULES}/http-request/include)
 
-# Compile dependencies
-add_subdirectory(${SHARED_MODULES}/http-request http-request)
-
 # Link directories
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 link_directories(${SRC_FOLDER}/external/curl/lib/.libs)

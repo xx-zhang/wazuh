@@ -10,6 +10,12 @@ inputs:
     required: false
     description: "Enable address sanitizer"
     default: "false"
+  moduleName:
+    required: false
+    description: "Module name, used to locate the binaries"
+  compilationFlags:
+    required: false
+    description: "Extra compilation flags"
 
 runs:
   using: "composite"
@@ -38,21 +44,21 @@ runs:
           if [[ "${{ inputs.asan }}" != "false" ]]; then
             # Compile for ASAN
             echo "Compiling for ASAN"
-            export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
+            export CXX_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
           else
             # Compile for valgrind and coverage
             echo "Compiling for valgrind and coverage"
-            export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
+            export CXX_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
           fi
 
           mkdir -p build && cd build
-          cmake -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" .. && make -j2
+          cmake .. ${{ inputs.compilationFlags }} -DCMAKE_CXX_FLAGS="$CXX_FLAGS" && make -j2
         shell: bash
       
       - name: Test
         run: |
 
-          cd ${{ inputs.path }}/build
+          cd ${{ inputs.path }}/build/${{ inputs.moduleName }}
 
           if [[ "${{ inputs.asan }}" != "false" ]]; then
             # Run for ASAN
