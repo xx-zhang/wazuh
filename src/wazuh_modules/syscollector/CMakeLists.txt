@@ -9,6 +9,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+get_filename_component(FLATBUFFERS_FOLDER ${CMAKE_SOURCE_DIR}/flatbuffers/ ABSOLUTE)
+get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
@@ -65,6 +67,7 @@ link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
+link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -94,6 +97,31 @@ elseif(UNIX AND NOT APPLE)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if (NOT ${TARGET} STREQUAL "")
+  if(${TARGET} STREQUAL "server")
+    list(APPEND Schemas
+                netiface_deltas
+                netproto_deltas
+                netaddr_deltas
+                osinfo_deltas
+                hwinfo_deltas
+                ports_deltas
+                programs_deltas
+                hotfixes_deltas
+                processes_deltas
+    )
+
+    foreach(schema IN LISTS Schemas)
+    set(FBS_FILE "${FLATBUFFERS_FOLDER}/${schema}.fbs")
+    add_custom_target(${schema}_target
+    COMMAND ${FLATC_PATH}/flatc -c -o ${CMAKE_SOURCE_DIR}/include/ ${FBS_FILE}
+    COMMENT "Executing flatc to generate ${schema} header file."
+    )
+    add_dependencies(${PROJECT_NAME} ${schema}_target)
+    endforeach()
+  endif()
+endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)

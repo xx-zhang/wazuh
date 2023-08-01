@@ -253,6 +253,8 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
 
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
+        if moduleName == "wazuh_modules/syscollector":
+            configureCMakeCommand += " -DTARGET=server"
     out = subprocess.run(configureCMakeCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,

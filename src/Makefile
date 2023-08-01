@@ -1667,7 +1667,7 @@ build_sysinfo: $(WAZUHEXT_LIB)
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 build_syscollector: build_shared_modules build_sysinfo
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
 #### Wazuh cmake ###
@@ -2621,6 +2621,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SYSCOLLECTOR)build
+	rm -rf $(SYSCOLLECTOR)include/*_deltas_*.h
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build
