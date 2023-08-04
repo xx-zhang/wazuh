@@ -29,8 +29,7 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 
-const std::string MAC_APPS_PATH{"/Applications"};
-const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
+const std::string INFO_PLIST_PATH { "Contents/Info.plist" };
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
@@ -46,12 +45,12 @@ static const std::vector<int> s_validFDSock =
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
-    { "/Applications/Utilities", PKG},
-    { "/System/Applications", PKG},
-    { "/System/Applications/Utilities", PKG},
-    { "/System/Library/CoreServices", PKG},
-    { "/private/var/db/receipts", PKG},
-    { "/Library/Apple/System/Library/Receipts", PKG},
+    { "/Library", PKG },
+    { "/System", PKG},
+    { "/Users", PKG},
+    { "/Volumes", PKG},
+    { "/Library/Apple/System/Library/Receipts", RCP},
+    { "/private/var/db/receipts", RCP},
     { "/usr/local/Cellar", BREW}
 };
 
@@ -99,18 +98,19 @@ nlohmann::json SysInfo::getHardware() const
     return hardware;
 }
 
-static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
+static void pkgAnalizeDirectory(const std::string& directory, std::function<void(nlohmann::json&)> callback)
 {
-    const auto packages { Utils::enumerateDir(pkgDirectory) };
-
-    for (const auto& package : packages)
+    const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
+    
+    for (const auto& subDirectory : subDirectories)
     {
-        if (PKG == pkgType)
+        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(package, ".service"))
         {
-            if (Utils::endsWith(package, ".app") || Utils::endsWith(package, ".plist"))
+            std::string pathInfoPlist = directory + "/" + subDirectory + "/" + INFO_PLIST_PATH;
+            if(Utils::existsRegular(pathInfoPlist))
             {
                 nlohmann::json jsPackage;
-                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, pkgType))->buildPackageData(jsPackage);
 
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
@@ -119,30 +119,57 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 }
             }
         }
-        else if (BREW == pkgType)
+
+        std::string pathSubDirectory = directory + "/" + subDirectory;
+        pkgAnalizeDirectory(pathSubDirectory, callback);
+    }
+
+}
+
+static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
+{
+    switch(pkgType)
+    {
+        case PKG:
         {
-            if (!Utils::startsWith(package, "."))
+            pkgAnalizeDirectory(pkgDirectory, callback);
+            break;
+        }
+
+        case BREW:
+        {
+            const auto packages { Utils::enumerateDir(pkgDirectory) };
+
+            for (const auto& package : packages)
             {
-                const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
-
-                for (const auto& version : packageVersions)
+                if (!Utils::startsWith(package, "."))
                 {
-                    if (!Utils::startsWith(version, "."))
-                    {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                    const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
 
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                    for (const auto& version : packageVersions)
+                    {
+                        if (!Utils::startsWith(version, "."))
                         {
-                            // Only return valid content packages
-                            callback(jsPackage);
+                            nlohmann::json jsPackage;
+                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+
+                            if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                            {
+                                // Only return valid content packages
+                                callback(jsPackage);
+                            }
                         }
                     }
                 }
             }
+            break;
         }
 
-        // else: invalid package
+        default:
+            throw std::runtime_error
+            {
+                "Unsupported pkgType argument"
+            };
     }
 }
 

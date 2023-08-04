@@ -21,7 +21,7 @@
 #include "plist/plist.h"
 #include "filesystemHelper.h"
 
-static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
+static const std::string INFO_PLIST_PATH    { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
 static const std::string UTILITIES_FOLDER   { "/Utilities"          };
 
