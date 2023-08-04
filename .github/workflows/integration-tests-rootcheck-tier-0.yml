@@ -1,6 +1,13 @@
 name: Rootcheck integration tests tier 0
 
 on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+
   pull_request:
     paths:
         - ".github/workflows/integration-tests-rootcheck-tier-0.yml"
@@ -10,6 +17,9 @@ on:
 
 jobs:
   build:
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -59,11 +69,16 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          BRANCH_NAME=17700-refactor-and-migrate-rootcheck-integration-tests
-          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${GITHUB_HEAD_REF}`" != "X" ]; then BRANCH_NAME=${GITHUB_HEAD_REF}; fi
-          git clone -b $BRANCH_NAME --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
+          if (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
+              $QA_BRANCH = $env:BRANCH_NAME
+          } elseif (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
+              $QA_BRANCH = $env:BRANCH_BASE
+          } else {
+              $QA_BRANCH = "main"
+          }
+          git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
+          pip install qa-integration-framework/
+          rm qa-integration-framework/ -r -force
       # Run rootcheck integration tests.
       - name: Run rootcheck integration tests
         run: |
