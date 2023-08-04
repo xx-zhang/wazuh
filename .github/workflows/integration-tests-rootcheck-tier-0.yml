@@ -69,16 +69,16 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
-              $QA_BRANCH = $env:BRANCH_NAME
-          } elseif (git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
-              $QA_BRANCH = $env:BRANCH_BASE
-          } else {
-              $QA_BRANCH = "main"
-          }
-          git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
-          pip install qa-integration-framework/
-          rm qa-integration-framework/ -r -force
+          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_NAME}
+          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_BASE}
+          else
+              QA_BRANCH="main"
+          fi
+          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+          sudo pip install qa-integration-framework/
+          sudo rm qa-integration-framework/ -r --force
       # Run rootcheck integration tests.
       - name: Run rootcheck integration tests
         run: |
