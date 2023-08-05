@@ -98,22 +98,21 @@ def load_agents(request):
     for index in range(agents_number):
         agent = create_agents(1, 'localhost')[0]
         agent.modules['rootcheck']['status'] = 'enabled'
-        _, injector = connect(agent)
         sender = Sender(manager_address='localhost', protocol=TCP, manager_port='1514')
         injector = Injector(sender, agent)
         injectors.append(injector)
         injector.run()
+        agent.wait_status_active()
         agents.append(agent)
 
     # Let rootcheck events to be sent for 60 seconds
-    time.sleep(60)
+    time.sleep(20)
 
     for injector in injectors:
         injector.stop_receive()
 
-    # # Service needs to be stopped otherwise db lock will be held by Wazuh db
-    # # time.sleep(15)
-    # control_service('stop')
+    # Service needs to be stopped otherwise db lock will be held by Wazuh db
+    control_service('stop')
     return agents
 
 # Test function.
@@ -178,32 +177,29 @@ def test_rootcheck(test_configuration, test_metadata, set_wazuh_configuration,
         - Rootcheck events were not deleted
 
     '''
-    # agents =
-    assert True
-
     # Check that logs have been added to the sql database
-    # for agent in agents:
-    #     rows = retrieve_rootcheck_rows(agent.id)
-        # db_string = [row[3] for row in rows]
-        # logs_string = [':'.join(x.split(':')[2:]) for x in
-        #               agent.rootcheck.messages_list]
+    for agent in agents:
+        rows = retrieve_rootcheck_rows(agent.id)
+        db_string = [row[3] for row in rows]
+        logs_string = [':'.join(x.split(':')[2:]) for x in
+                      agent.rootcheck.messages_list]
 
-        # alerts_description = []
-        # with open(ALERTS_JSON_PATH, 'r') as f:
-        #     for line in f:
-        #         if '"decoder":{"name":"rootcheck"}' in line:
-        #             try:
-        #                 json_lines = json.loads(line.strip())
-        #                 alerts_description.append(json_lines['full_log'])
-        #             except json.JSONDecodeError:
-        #                 print(f"Invalid json {line.strip()}")
+        alerts_description = []
+        with open(ALERTS_JSON_PATH, 'r') as f:
+            for line in f:
+                if '"decoder":{"name":"rootcheck"}' in line:
+                    try:
+                        json_lines = json.loads(line.strip())
+                        alerts_description.append(json_lines['full_log'])
+                    except json.JSONDecodeError:
+                        print(f"Invalid json {line.strip()}")
 
-        # for log in logs_string:
-        #     assert log in db_string, f"Log: \"{log}\" not found in Database"
-        #     if log not in ['Starting rootcheck scan.',
-        #                    'Ending rootcheck scan.']:
-        #         assert log in alerts_description, f"Log: \"{log}\" " \
-        #                                           "not found in alerts file"
+        for log in logs_string:
+            assert log in db_string, f"Log: \"{log}\" not found in Database"
+            if log not in ['Starting rootcheck scan.',
+                           'Ending rootcheck scan.']:
+                assert log in alerts_description, f"Log: \"{log}\" " \
+                                                  "not found in alerts file"
 
     # if test_metadata["check_updates"]:
     #     # Service needs to be restarted
