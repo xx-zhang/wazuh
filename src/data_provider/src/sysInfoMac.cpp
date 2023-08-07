@@ -102,6 +102,8 @@ static void pkgAnalizeDirectory(const std::string& directory, std::function<void
 {
     const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
     
+    std::cout << "DEBUG. Comienza a analizar el directorio. " << directory << std::endl;
+
     for (const auto& subDirectory : subDirectories)
     {
         if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(package, ".service"))
@@ -109,6 +111,8 @@ static void pkgAnalizeDirectory(const std::string& directory, std::function<void
             std::string pathInfoPlist = directory + "/" + subDirectory + "/" + INFO_PLIST_PATH;
             if(Utils::existsRegular(pathInfoPlist))
             {
+                std::cout << "DEBUG. Se encuentra el subdirectorio, con estructura valida. " << subDirectory << std::endl;
+                
                 nlohmann::json jsPackage;
                 FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, pkgType))->buildPackageData(jsPackage);
 
@@ -123,7 +127,6 @@ static void pkgAnalizeDirectory(const std::string& directory, std::function<void
         std::string pathSubDirectory = directory + "/" + subDirectory;
         pkgAnalizeDirectory(pathSubDirectory, callback);
     }
-
 }
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
