@@ -29,7 +29,6 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 
-const std::string INFO_PLIST_PATH { "Contents/Info.plist" };
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
@@ -46,9 +45,9 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
     { "/Library", PKG },
-    { "/System", PKG},
+    { "/System/Applications", PKG},
+    { "/System/Library", PKG},
     { "/Users", PKG},
-    { "/Volumes", PKG},
     { "/Library/Apple/System/Library/Receipts", RCP},
     { "/private/var/db/receipts", RCP},
     { "/usr/local/Cellar", BREW}
@@ -102,19 +101,20 @@ static void pkgAnalizeDirectory(const std::string& directory, std::function<void
 {
     const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
     
-    std::cout << "DEBUG. Comienza a analizar el directorio. " << directory << std::endl;
-
     for (const auto& subDirectory : subDirectories)
     {
-        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(package, ".service"))
+        if ((subDirectory == ".") || (subDirectory == ".."))
         {
-            std::string pathInfoPlist = directory + "/" + subDirectory + "/" + INFO_PLIST_PATH;
+            continue;
+        }
+
+        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
+        {
+            std::string pathInfoPlist = directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH;
             if(Utils::existsRegular(pathInfoPlist))
             {
-                std::cout << "DEBUG. Se encuentra el subdirectorio, con estructura valida. " << subDirectory << std::endl;
-                
                 nlohmann::json jsPackage;
-                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, pkgType))->buildPackageData(jsPackage);
+                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
 
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
@@ -136,6 +136,11 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
         case PKG:
         {
             pkgAnalizeDirectory(pkgDirectory, callback);
+            break;
+        }
+
+        case RCP:
+        {
             break;
         }
 

@@ -21,26 +21,21 @@
 #include "plist/plist.h"
 #include "filesystemHelper.h"
 
-static const std::string INFO_PLIST_PATH    { "Contents/Info.plist" };
-static const std::string PLIST_BINARY_START { "bplist00"            };
-static const std::string UTILITIES_FOLDER   { "/Utilities"          };
-
 class PKGWrapper final : public IPackageWrapper
 {
     public:
+        static constexpr auto INFO_PLIST_PATH    { "Contents/Info.plist" };
+
         explicit PKGWrapper(const PackageContext& ctx)
             : m_architecture{UNKNOWN_VALUE}
             , m_format{"pkg"}
             , m_vendor{UNKNOWN_VALUE}
         {
-            std::string packagePath = ctx.filePath + "/" + ctx.package;
-
-            if (Utils::endsWith(ctx.package, ".app"))
+            std::string pathInfoPlist = ctx.filePath + "/" + ctx.package + "/" + INFO_PLIST_PATH;
+            if(Utils::existsRegular(pathInfoPlist))
             {
-                packagePath = packagePath + "/" + APP_INFO_PATH;
+                getPkgData(pathInfoPlist);
             }
-
-            getPkgData(packagePath);
         }
 
         ~PKGWrapper() = default;
@@ -107,6 +102,9 @@ class PKGWrapper final : public IPackageWrapper
         }
 
     private:
+        static constexpr auto PLIST_BINARY_START { "bplist00"            };
+        static constexpr auto UTILITIES_FOLDER   { "/Utilities"          };
+
         void getPkgData(const std::string& filePath)
         {
             const auto isBinaryFnc
@@ -149,15 +147,14 @@ class PKGWrapper final : public IPackageWrapper
                     m_size = 0;
                     m_priority = UNKNOWN_VALUE;
                     m_multiarch = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                    m_source = (filePath.find(UTILITIES_FOLDER) != std::string::npos)? "utilities" : "applications";
 
                     while (std::getline(data, line))
                     {
                         line = Utils::trim(line, " \t");
 
-                        if ((line == "<key>CFBundleName</key>" ||
-                                line == "<key>PackageIdentifier</key>") &&
-                                std::getline(data, line))
+                        if (line == "<key>CFBundleName</key>" &&
+                            std::getline(data, line))
                         {
                             m_name = getValueFnc(line);
                         }
@@ -177,7 +174,8 @@ class PKGWrapper final : public IPackageWrapper
                         {
                             m_groups = getValueFnc(line);
                         }
-                        else if (line == "<key>CFBundleIdentifier</key>" &&
+                        else if ((line == "<key>CFBundleIdentifier</key>" ||
+                                  line == "<key>PackageIdentifier</key>") &&
                                  std::getline(data, line))
                         {
                             m_description = getValueFnc(line);
