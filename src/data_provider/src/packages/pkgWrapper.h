@@ -24,7 +24,7 @@
 class PKGWrapper final : public IPackageWrapper
 {
     public:
-        static constexpr auto INFO_PLIST_PATH    { "Contents/Info.plist" };
+        static constexpr auto INFO_PLIST_PATH { "Contents/Info.plist" };
 
         explicit PKGWrapper(const PackageContext& ctx)
             : m_architecture{UNKNOWN_VALUE}
@@ -102,8 +102,8 @@ class PKGWrapper final : public IPackageWrapper
         }
 
     private:
-        static constexpr char PLIST_BINARY_HEADER[] { "bplist00" };
-        static constexpr auto UTILITIES_FOLDER   { "/Utilities"          };
+        static constexpr auto PLIST_BINARY_HEADER { "bplist00" };
+        static constexpr auto UTILITIES_FOLDER { "/Utilities" };
 
         void getPkgData(const std::string& filePath)
         {
@@ -111,16 +111,11 @@ class PKGWrapper final : public IPackageWrapper
             {
                 [&filePath]()
                 {
-                    /*
-                    // If first line is "bplist00" it's a binary plist file
-                    std::fstream file {filePath, std::ios_base::in};
-                    std::string line;
-                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
-                    */
+                    // If first bytes are "bplist00" it's a binary plist file
                     std::array<char, (sizeof(PLIST_BINARY_HEADER) - 1)> headerBuffer;
                     std::ifstream ifs {filePath, std::ios::binary};
-                    ifs.read(headerBuffer, sizeof(headerBuffer));
-                    return !std::memcmp(headerBuffer, PLIST_BINARY_HEADER, sizeof(PLIST_BINARY_HEADER) - 1);
+                    ifs.read(headerBuffer.data(), sizeof(headerBuffer));
+                    return !std::memcmp(headerBuffer.data(), PLIST_BINARY_HEADER, sizeof(PLIST_BINARY_HEADER) - 1);
                 }
             };
             const auto isBinary { isBinaryFnc() };
