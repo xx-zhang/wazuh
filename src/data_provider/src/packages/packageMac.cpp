@@ -26,6 +26,10 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<PKGWrapper>(ctx.first));
     }
+    else if (ctx.second == RCP)
+    {
+        ret = std::make_shared<BSDPackageImpl>(std::make_shared<RCPWrapper>(ctx.first));
+    }
     else
     {
         throw std::runtime_error { "Error creating BSD package data retriever." };

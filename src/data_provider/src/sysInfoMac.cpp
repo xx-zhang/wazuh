@@ -97,50 +97,93 @@ nlohmann::json SysInfo::getHardware() const
     return hardware;
 }
 
-static void pkgAnalizeDirectory(const std::string& directory, std::function<void(nlohmann::json&)> callback)
-{
-    const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
-    
-    for (const auto& subDirectory : subDirectories)
-    {
-        if ((subDirectory == ".") || (subDirectory == ".."))
-        {
-            continue;
-        }
-
-        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
-        {
-            std::string pathInfoPlist = directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH;
-            if(Utils::existsRegular(pathInfoPlist))
-            {
-                nlohmann::json jsPackage;
-                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
-
-                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                {
-                    // Only return valid content packages
-                    callback(jsPackage);
-                }
-            }
-        }
-
-        std::string pathSubDirectory = directory + "/" + subDirectory;
-        pkgAnalizeDirectory(pathSubDirectory, callback);
-    }
-}
-
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
     switch(pkgType)
     {
         case PKG:
         {
-            pkgAnalizeDirectory(pkgDirectory, callback);
+            static void pkgAnalizeDirectory
+            {
+                [callback](const std::string& directory)
+                {
+                    const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
+    
+                    for (const auto& subDirectory : subDirectories)
+                    {
+                        if ((subDirectory == ".") || (subDirectory == ".."))
+                        {
+                            continue;
+                        }
+
+                        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
+                        {
+                            std::string pathInfoPlist = directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH;
+                            if(Utils::existsRegular(pathInfoPlist))
+                            {
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
+                            }
+                        }
+
+                        std::string pathSubDirectory = directory + "/" + subDirectory;
+                        pkgAnalizeDirectory(pathSubDirectory, callback);
+                    }
+
+                }
+            };
+
+            pkgAnalizeDirectory(pkgDirectory);
             break;
         }
 
         case RCP:
         {
+            static bool isInPKGDirectory
+            {
+                [](const std::string& plistDirectory)
+                {
+                    const std::map<std::string, int>::iterator itMapPackagesDirectories = s_mapPackagesDirectories.begin();
+
+                    while(itMapPackagesDirectories != s_mapPackagesDirectories.end())
+                    {
+                        if(itMapPackagesDirectories->second == PKG && Utils::startsWith(plistDirectory, itMapPackagesDirectories->first))
+                        {
+                            return true;
+                        }
+                        itMapPackagesDirectories++;
+                    }
+                    return false;
+                }
+            };
+
+            const auto files { Utils::enumerateDir(pkgDirectory, DT_REG) };
+            
+            for (const auto& file : files)
+            {
+                if (Utils::endsWith(file, ".plist"))
+                {
+                    std::string package = substrOnFirstOccurrence(file, ".plist");
+
+                    nlohmann::json jsPackage;
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
+
+                    if (!jsPackage.at("name").get_ref<const std::string&>().empty() && 
+                        !jsPackage.at("location").get_ref<const std::string&>().empty() &&
+                        !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
+                    )
+                    {
+                        // Only return valid content packages
+                        callback(jsPackage);
+                    }
+                }
+            }
             break;
         }
 
