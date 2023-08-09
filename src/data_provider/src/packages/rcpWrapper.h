@@ -238,9 +238,16 @@ class RCPWrapper final : public IPackageWrapper
                 char name[];
             } __attribute__((packed));
 
+            size_t varsOffset { 0 };
+            size_t tableOffset { 0 };
+            const BOMHeader * pHeader { nullptr };
+            const BOMBlockTable * pTable { nullptr };
+            const BOMVars * pVars { nullptr };
+            std::vector<char> fileContent;
+
             const auto getVariable
             {
-                [&](size_t &offset)
+                [&](size_t &offset) -> const BOMVar *
                 {
                     if (fileContent.size() < varsOffset + offset + sizeof(BOMVar))
                     {
@@ -248,7 +255,7 @@ class RCPWrapper final : public IPackageWrapper
                         return nullptr;
                     }
 
-                    const BOMVar * pVar = static_cast<BOMVar *>((char *)pVars->list + offset);
+                    auto pVar = reinterpret_cast<const BOMVar *>((char *)pVars->list + offset);
                     if (pVar == nullptr) {
                         offset = 0;
                         return nullptr;
@@ -266,7 +273,7 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto getPointer
             {
-                [&](int index, size_t &length)
+                [&](int index, size_t &length) -> const char *
                 {
                     if (ntohl(index) >= ntohl(pTable->count))
                     {
@@ -289,10 +296,10 @@ class RCPWrapper final : public IPackageWrapper
 
             const auto getPaths
             {
-                [&](int index)
+                [&](int index) -> const BOMPaths *
                 {
                     size_t pathsSize = 0;
-                    auto paths = static_cast<BOMPaths *>(getPointer(index, &pathsSize));
+                    auto paths = reinterpret_cast<const BOMPaths *>(getPointer(index, pathsSize));
                     if (paths == nullptr || pathsSize < sizeof(BOMPaths)) {
                         return nullptr;
                     }
@@ -318,13 +325,15 @@ class RCPWrapper final : public IPackageWrapper
                             uint32_t index0 = paths->indices[j].index0;
                             uint32_t index1 = paths->indices[j].index1;
 
-                            auto info1 = static_cast<const BOMPathInfo1 *>(getPointer(index0));
+                            size_t info1Size;
+                            auto info1 = reinterpret_cast<const BOMPathInfo1 *>(getPointer(index0, info1Size));
                             if (info1 == nullptr)
                             {
                                 return;
                             }
 
-                            auto info2 = static_cast<const BOMPathInfo2 *>(getPointer(info1->index));
+                            size_t info2Size;
+                            auto info2 = reinterpret_cast<const BOMPathInfo2 *>(getPointer(info1->index, info2Size));
                             if (info2 == nullptr)
                             {
                                 return;
@@ -332,7 +341,7 @@ class RCPWrapper final : public IPackageWrapper
 
                             // Compute full name using pointer size.
                             size_t fileSize;
-                            auto file = static_cast<const BOMFile *>(getPointer(index1, &fileSize));
+                            auto file = reinterpret_cast<const BOMFile *>(getPointer(index1, fileSize));
                             if (file == nullptr || fileSize <= sizeof(BOMFile))
                             {
                                 return;
@@ -354,7 +363,19 @@ class RCPWrapper final : public IPackageWrapper
                                 it = parents.find(it->second);
                             }
 
-                            std::cout << "DEBUG. BOM path: " << filename << std::endl;
+                            if(filename == ".")
+                            {
+                                continue;
+                            }
+
+                            if(m_installPrefixPath == "/")
+                            {
+                                filename = filename.substr(1);
+                            }
+                            else
+                            {
+                                filename = m_installPrefixPath + "/" + filename.substr(1);
+                            }
 
                             m_bomPaths.push_back(filename);
                         }
@@ -371,22 +392,15 @@ class RCPWrapper final : public IPackageWrapper
                 }
             };
 
-            size_t varsOffset { 0 };
-            size_t tableOffset { 0 };
-            const BOMHeader * pHeader { nullptr };
-            const BOMBlockTable * pTable { nullptr };
-            const BOMVars * pVars { nullptr };
-
             m_bomPaths.clear();
-
-            std::vector<char> fileContent { Utils::getBinaryContent(filePath) };
+            fileContent = Utils::getBinaryContent(filePath);
 
             // Check file headers integrity
             if (fileContent.size() < sizeof(BOMHeader)) {
                 return;
             }
 
-            pHeader = static_cast<BOMHeader *>(fileContent.data());
+            pHeader = reinterpret_cast<const BOMHeader *>(fileContent.data());
             if (std::string(pHeader->magic, 8) != "BOMStore") {
                 return;
             }
@@ -395,7 +409,7 @@ class RCPWrapper final : public IPackageWrapper
                 return;
             }
 
-            pTable = static_cast<BOMBlockTable *>(fileContent.data() + ntohl(pHeader->indexOffset));
+            pTable = reinterpret_cast<const BOMBlockTable *>(fileContent.data() + ntohl(pHeader->indexOffset));
             tableOffset = ntohl(pHeader->indexOffset) + sizeof(BOMBlockTable);
             if (fileContent.size() < tableOffset + ntohl(pTable->count) * sizeof(BOMPointer)) {
                 return;
@@ -405,7 +419,7 @@ class RCPWrapper final : public IPackageWrapper
                 return;
             }
 
-            pVars = static_cast<BOMVars*>(fileContent.data() + ntohl(pHeader->varsOffset));
+            pVars = reinterpret_cast<const BOMVars *>(fileContent.data() + ntohl(pHeader->varsOffset));
             varsOffset = ntohl(pHeader->varsOffset) + sizeof(BOMVars);
             if (fileContent.size() < varsOffset + ntohl(pVars->count) * sizeof(BOMVar)) {
                 return;
@@ -416,13 +430,13 @@ class RCPWrapper final : public IPackageWrapper
             for (uint32_t varsIdx = 0; varsIdx < ntohl(pVars->count); varsIdx++)
             {
                 auto pVar = getVariable(varOffset);
-                if (pVar == nullptr || pVar->name == nullptr)
+                if (pVar == nullptr)
                 {
                     break;
                 }
 
                 size_t varSize;
-                const char * pVarData = getPointer(pVar->index, &varSize);
+                auto pVarData = getPointer(pVar->index, varSize);
                 if (pVarData == nullptr || varSize < sizeof(BOMTree) || varSize < pVar->length)
                 {
                     break;
@@ -434,7 +448,7 @@ class RCPWrapper final : public IPackageWrapper
                     continue;
                 }
 
-                const BOMTree * pTree = static_cast<const BOMTree *>(pVarData);
+                auto pTree = reinterpret_cast<const BOMTree *>(pVarData);
                 auto pPaths = getPaths(pTree->child);
                 while (pPaths != nullptr && pPaths->isLeaf == htons(0))
                 {

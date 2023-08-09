@@ -43,14 +43,14 @@ static const std::vector<int> s_validFDSock =
 
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
-    // { "/Applications", PKG },
-    // { "/Library", PKG },
-    // { "/System/Applications", PKG },
-    // { "/System/Library", PKG },
-    // { "/Users", PKG },
+    { "/Applications", PKG },
+    { "/Library", PKG },
+    { "/System/Applications", PKG },
+    { "/System/Library", PKG },
+    { "/Users", PKG },
     { "/Library/Apple/System/Library/Receipts", RCP },
     { "/private/var/db/receipts", RCP },
-    // { "/usr/local/Cellar", BREW }
+    { "/usr/local/Cellar", BREW }
 };
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
@@ -148,6 +148,14 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             {
                 [](const std::string& plistDirectory)
                 {
+                    for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                    {
+                        if(packagesDirectory.second == RCP && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                        {
+                            return false;
+                        }
+                    }
+
                     for (const auto& packagesDirectory : s_mapPackagesDirectories)
                     {
                         if(packagesDirectory.second == PKG && Utils::startsWith(plistDirectory, packagesDirectory.first))
