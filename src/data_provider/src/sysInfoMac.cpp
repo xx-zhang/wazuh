@@ -43,14 +43,14 @@ static const std::vector<int> s_validFDSock =
 
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
-    { "/Applications", PKG },
-    { "/Library", PKG },
-    { "/System/Applications", PKG},
-    { "/System/Library", PKG},
-    { "/Users", PKG},
+    // { "/Applications", PKG },
+    // { "/Library", PKG },
+    // { "/System/Applications", PKG},
+    // { "/System/Library", PKG},
+    // { "/Users", PKG},
     { "/Library/Apple/System/Library/Receipts", RCP},
     { "/private/var/db/receipts", RCP},
-    { "/usr/local/Cellar", BREW}
+    // { "/usr/local/Cellar", BREW}
 };
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
@@ -103,9 +103,10 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     {
         case PKG:
         {
-            static void pkgAnalizeDirectory
-            {
-                [callback](const std::string& directory)
+            std::function<void(const std::string&)> pkgAnalizeDirectory;
+
+            pkgAnalizeDirectory =
+                [&](const std::string& directory)
                 {
                     const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
     
@@ -118,7 +119,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
                         if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
                         {
-                            std::string pathInfoPlist = directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH;
+                            std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
                             if(Utils::existsRegular(pathInfoPlist))
                             {
                                 nlohmann::json jsPackage;
@@ -132,12 +133,10 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                             }
                         }
 
-                        std::string pathSubDirectory = directory + "/" + subDirectory;
-                        pkgAnalizeDirectory(pathSubDirectory, callback);
+                        std::string pathSubDirectory { directory + "/" + subDirectory };
+                        pkgAnalizeDirectory(pathSubDirectory);
                     }
-
-                }
-            };
+                };
 
             pkgAnalizeDirectory(pkgDirectory);
             break;
@@ -145,19 +144,16 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
         case RCP:
         {
-            static bool isInPKGDirectory
+            static auto isInPKGDirectory
             {
                 [](const std::string& plistDirectory)
                 {
-                    const std::map<std::string, int>::iterator itMapPackagesDirectories = s_mapPackagesDirectories.begin();
-
-                    while(itMapPackagesDirectories != s_mapPackagesDirectories.end())
+                    for (const auto& packagesDirectory : s_mapPackagesDirectories)
                     {
-                        if(itMapPackagesDirectories->second == PKG && Utils::startsWith(plistDirectory, itMapPackagesDirectories->first))
+                        if(packagesDirectory.second == PKG && Utils::startsWith(plistDirectory, packagesDirectory.first))
                         {
                             return true;
                         }
-                        itMapPackagesDirectories++;
                     }
                     return false;
                 }
@@ -169,7 +165,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             {
                 if (Utils::endsWith(file, ".plist"))
                 {
-                    std::string package = substrOnFirstOccurrence(file, ".plist");
+                    std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
 
                     nlohmann::json jsPackage;
                     FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);

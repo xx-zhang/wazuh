@@ -13,6 +13,7 @@
 #include "sharedDefs.h"
 #include "brewWrapper.h"
 #include "pkgWrapper.h"
+#include "rcpWrapper.h"
 
 std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
 {

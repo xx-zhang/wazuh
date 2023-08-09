@@ -14,7 +14,7 @@
 
 #include <fstream>
 #include "stringHelper.h"
-#include "ibomWrapper.h"
+#include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "filesystemHelper.h"
 
@@ -36,41 +36,41 @@ class RCPWrapper final : public IPackageWrapper
             m_priority = UNKNOWN_VALUE;
             m_multiarch = UNKNOWN_VALUE;
 
-            std::string pathInstallPlistFile = ctx.filePath + "/" + ctx.package + ".plist";
+            std::string pathInstallPlistFile { ctx.filePath + "/" + ctx.package + ".plist" };
             getPlistData(pathInstallPlistFile);
 
-            if(!m_installPrefixPath.empty())
+            if(m_installPrefixPath.empty())
             {
-                std::string pathPlistFile;
-                std::string pathBomFile = ctx.filePath + "/" + ctx.package + ".bom";
-                if(Utils::existsRegular(pathBomFile))
-                {
-                    getBomData(pathBomFile);
-                    
-                    std::string infoPlistEndingApp = ".app/" + INFO_PLIST_PATH;
-                    std::string infoPlistEndingService = ".service/" + INFO_PLIST_PATH;
-                    size_t numSubdirectoriesMin = (size_t)-1;
+                m_installPrefixPath = "/";
+            }
 
-                    std::deque<std::string>::iterator itBomPath = m_bomPaths.begin();
-                    while(itBomPath != m_bomPaths.end())
+            std::string pathPlistFile;
+            std::string pathBomFile { ctx.filePath + "/" + ctx.package + ".bom" };
+            if(Utils::existsRegular(pathBomFile))
+            {
+                getBomData(pathBomFile);
+                
+                std::string infoPlistEndingApp { std::string(".app/") + INFO_PLIST_PATH };
+                std::string infoPlistEndingService { std::string(".service/") + INFO_PLIST_PATH };
+                size_t numSubdirectoriesMin = (size_t)-1;
+
+                for ( const auto& bomPath : m_bomPaths)
+                {
+                    if(Utils::endsWith(bomPath, infoPlistEndingApp) || Utils::endsWith(bomPath, infoPlistEndingService))
                     {
-                        if(Utils::endsWith(*itBomPath, infoPlistEndingApp) || Utils::endsWith(*itBomPath, infoPlistEndingService))
+                        size_t numSubdirectoriesCurrent = Utils::split(bomPath, '/').size();
+                        if(numSubdirectoriesCurrent < numSubdirectoriesMin)
                         {
-                            size_t numSubdirectoriesCurrent = Utils.split(*itBomPath, '/').size();
-                            if(numSubdirectoriesCurrent < numSubdirectoriesMin)
-                            {
-                                numSubdirectoriesMin = numSubdirectoriesCurrent;
-                                pathPlistFile = *itBomPath;
-                            }
+                            numSubdirectoriesMin = numSubdirectoriesCurrent;
+                            pathPlistFile = bomPath;
                         }
-                        itBomPath++;
                     }
                 }
+            }
 
-                if(!pathPlistFile.empty() && Utils::existsRegular(pathPlistFile))
-                {
-                    getPlistData(pathPlistFile);
-                }
+            if(!pathPlistFile.empty() && Utils::existsRegular(pathPlistFile))
+            {
+                getPlistData(pathPlistFile);
             }
         }
 
@@ -227,6 +227,11 @@ class RCPWrapper final : public IPackageWrapper
                         {
                             m_installPrefixPath = getValueFnc(line);
                         }
+                    }
+
+                    if (m_name.empty() && !m_description.empty())
+                    {
+                        m_name = m_description;
                     }
 
                     if (!bundleShortVersionString.empty() && Utils::startsWith(bundleVersion, bundleShortVersionString))
