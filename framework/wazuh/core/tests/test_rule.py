@@ -124,7 +124,17 @@ def test_load_rules_from_file_unknown(mock_load):
     with pytest.raises(OSError, match='.*[Errno 8].*'):
         rule.load_rules_from_file('unknown.xml', 'tests/data/rules', 'disabled')
 
+@patch("wazuh.core.common.WAZUH_PATH", new=parent_directory)
+@patch("wazuh.core.common.RULES_PATH", new=data_path)
+def test_load_rules_from_file_groups_format():
+    """Test load_rules_from_file group names formatting."""
+    results = rule.load_rules_from_file('9998-rules_groups_test.xml', 'tests/data/rules', 'enabled')
+    escaped_chars = ['\\n', '\\t', ' ']
 
+    for result in results:
+        for group in result['groups']:
+            assert not any([x in group for x in escaped_chars])
+    
 @pytest.mark.parametrize('tmp_data, parameters, expected_result', [
     ([
          {'filename': 'one.xml', 'status': 'all'},
