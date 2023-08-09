@@ -32,7 +32,8 @@ class PKGWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
         {
             std::string pathInfoPlist = ctx.filePath + "/" + ctx.package + "/" + INFO_PLIST_PATH;
-            if(Utils::existsRegular(pathInfoPlist))
+
+            if (Utils::existsRegular(pathInfoPlist))
             {
                 getPkgData(pathInfoPlist);
             }
@@ -112,7 +113,7 @@ class PKGWrapper final : public IPackageWrapper
                 [&filePath]()
                 {
                     // If first bytes are "bplist00" it's a binary plist file
-                    std::array<char, (sizeof(PLIST_BINARY_HEADER) - 1)> headerBuffer;
+                    std::array < char, (sizeof(PLIST_BINARY_HEADER) - 1) > headerBuffer;
                     std::ifstream ifs {filePath, std::ios::binary};
                     ifs.read(headerBuffer.data(), sizeof(headerBuffer));
                     return !std::memcmp(headerBuffer.data(), PLIST_BINARY_HEADER, sizeof(PLIST_BINARY_HEADER) - 1);
@@ -148,14 +149,14 @@ class PKGWrapper final : public IPackageWrapper
                     m_size = 0;
                     m_priority = UNKNOWN_VALUE;
                     m_multiarch = UNKNOWN_VALUE;
-                    m_source = (filePath.find(UTILITIES_FOLDER) != std::string::npos)? "utilities" : "applications";
+                    m_source = (filePath.find(UTILITIES_FOLDER) != std::string::npos) ? "utilities" : "applications";
 
                     while (std::getline(data, line))
                     {
                         line = Utils::trim(line, " \t");
 
                         if (line == "<key>CFBundleName</key>" &&
-                            std::getline(data, line))
+                                std::getline(data, line))
                         {
                             m_name = getValueFnc(line);
                         }

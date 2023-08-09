@@ -99,17 +99,17 @@ nlohmann::json SysInfo::getHardware() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
-    switch(pkgType)
+    switch (pkgType)
     {
         case PKG:
-        {
-            std::function<void(const std::string&)> pkgAnalizeDirectory;
+            {
+                std::function<void(const std::string&)> pkgAnalizeDirectory;
 
-            pkgAnalizeDirectory =
-                [&](const std::string& directory)
+                pkgAnalizeDirectory =
+                    [&](const std::string & directory)
                 {
                     const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
-    
+
                     for (const auto& subDirectory : subDirectories)
                     {
                         if ((subDirectory == ".") || (subDirectory == ".."))
@@ -120,7 +120,8 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
                         {
                             std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
-                            if(Utils::existsRegular(pathInfoPlist))
+
+                            if (Utils::existsRegular(pathInfoPlist))
                             {
                                 nlohmann::json jsPackage;
                                 FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
@@ -138,87 +139,90 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     }
                 };
 
-            pkgAnalizeDirectory(pkgDirectory);
-            break;
-        }
+                pkgAnalizeDirectory(pkgDirectory);
+                break;
+            }
 
         case RCP:
-        {
-            static auto isInPKGDirectory
             {
-                [](const std::string& plistDirectory)
+                static auto isInPKGDirectory
                 {
-                    for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                    [](const std::string & plistDirectory)
                     {
-                        if(packagesDirectory.second == RCP && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                        for (const auto& packagesDirectory : s_mapPackagesDirectories)
                         {
-                            return false;
+                            if (packagesDirectory.second == RCP && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                            {
+                                return false;
+                            }
+                        }
+
+                        for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                        {
+                            if (packagesDirectory.second == PKG && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                            {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    }
+                };
+
+                const auto files { Utils::enumerateDir(pkgDirectory, DT_REG) };
+
+                for (const auto& file : files)
+                {
+                    if (Utils::endsWith(file, ".plist"))
+                    {
+                        std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
+
+                        nlohmann::json jsPackage;
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
+
+                        if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                                !jsPackage.at("location").get_ref<const std::string&>().empty() &&
+                                !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
+                           )
+                        {
+                            // Only return valid content packages
+                            callback(jsPackage);
                         }
                     }
-
-                    for (const auto& packagesDirectory : s_mapPackagesDirectories)
-                    {
-                        if(packagesDirectory.second == PKG && Utils::startsWith(plistDirectory, packagesDirectory.first))
-                        {
-                            return true;
-                        }
-                    }
-                    return false;
                 }
-            };
 
-            const auto files { Utils::enumerateDir(pkgDirectory, DT_REG) };
-            
-            for (const auto& file : files)
-            {
-                if (Utils::endsWith(file, ".plist"))
-                {
-                    std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
-
-                    nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
-
-                    if (!jsPackage.at("name").get_ref<const std::string&>().empty() && 
-                        !jsPackage.at("location").get_ref<const std::string&>().empty() &&
-                        !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
-                    )
-                    {
-                        // Only return valid content packages
-                        callback(jsPackage);
-                    }
-                }
+                break;
             }
-            break;
-        }
 
         case BREW:
-        {
-            const auto packages { Utils::enumerateDir(pkgDirectory) };
-
-            for (const auto& package : packages)
             {
-                if (!Utils::startsWith(package, "."))
+                const auto packages { Utils::enumerateDir(pkgDirectory) };
+
+                for (const auto& package : packages)
                 {
-                    const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
-
-                    for (const auto& version : packageVersions)
+                    if (!Utils::startsWith(package, "."))
                     {
-                        if (!Utils::startsWith(version, "."))
-                        {
-                            nlohmann::json jsPackage;
-                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                        const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
 
-                            if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                        for (const auto& version : packageVersions)
+                        {
+                            if (!Utils::startsWith(version, "."))
                             {
-                                // Only return valid content packages
-                                callback(jsPackage);
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
                             }
                         }
                     }
                 }
+
+                break;
             }
-            break;
-        }
 
         default:
             throw std::runtime_error
