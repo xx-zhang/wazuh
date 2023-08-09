@@ -143,7 +143,311 @@ class RCPWrapper final : public IPackageWrapper
 
         void getBomData(const std::string& filePath)
         {
+            struct BOMHeader {
+                // Always "BOMStore"
+                char magic[8];
+                // Always 1
+                uint32_t version;
+                // Number of non-null entries in BOMBlockTable
+                uint32_t numberOfBlocks;
+                uint32_t indexOffset;
+                uint32_t indexLength;
+                uint32_t varsOffset;
+                uint32_t varsLength;
+            } __attribute__((packed));
+
+            struct BOMPointer {
+                uint32_t address;
+                uint32_t length;
+            } __attribute__((packed));
+
+            struct BOMBlockTable {
+                // See header for number of non-null blocks
+                uint32_t count;
+                // First entry must always be a null entry
+                BOMPointer blockPointers[];
+            } __attribute__((packed));
+
+            struct BOMTree {
+                // Always "tree"
+                char tree[4];
+                // Always 1
+                uint32_t version;
+                // Index for BOMPaths
+                uint32_t child;
+                // Always 4096
+                uint32_t blockSize;
+                // Total number of paths in all leaves combined
+                uint32_t pathCount;
+                uint8_t unknown3;
+            } __attribute__((packed));
+
+            struct BOMVar {
+                uint32_t index;
+                uint8_t length;
+                char name[];
+            } __attribute__((packed));
+
+            struct BOMVars {
+                uint32_t count;
+                BOMVar list[];
+            } __attribute__((packed));
+
+            struct BOMPathIndices {
+                // for leaf: points to BOMPathInfo1, for branch points to BOMPaths
+                uint32_t index0;
+                // always points to BOMFile
+                uint32_t index1;
+            } __attribute__((packed));
+
+            struct BOMPaths {
+                uint16_t isLeaf;
+                uint16_t count;
+                uint32_t forward;
+                uint32_t backward;
+                BOMPathIndices indices[];
+            } __attribute__((packed));
+
+            struct BOMPathInfo2 {
+                uint8_t type;
+                uint8_t unknown0;
+                uint16_t architecture;
+                uint16_t mode;
+                uint32_t user;
+                uint32_t group;
+                uint32_t modtime;
+                uint32_t size;
+                uint8_t unknown1;
+                union {
+                    uint32_t checksum;
+                    uint32_t devType;
+                };
+                uint32_t linkNameLength;
+                char linkName[];
+            } __attribute__((packed));
+
+            struct BOMPathInfo1 {
+                uint32_t id;
+                // Pointer to BOMPathInfo2
+                uint32_t index;
+            } __attribute__((packed));
+
+            struct BOMFile {
+                // Parent BOMPathInfo1->id
+                uint32_t parent;
+                char name[];
+            } __attribute__((packed));
+
+            const auto getVariable
+            {
+                [&](size_t &offset)
+                {
+                    if (fileContent.size() < varsOffset + offset + sizeof(BOMVar))
+                    {
+                        offset = 0;
+                        return nullptr;
+                    }
+
+                    const BOMVar * pVar = static_cast<BOMVar *>((char *)pVars->list + offset);
+                    if (pVar == nullptr) {
+                        offset = 0;
+                        return nullptr;
+                    }
+
+                    offset += sizeof(BOMVar) + pVar->length;
+                    if (fileContent.size() < varsOffset + offset) {
+                        offset = 0;
+                        return nullptr;
+                    }
+
+                    return pVar;
+                }
+            };
+
+            const auto getPointer
+            {
+                [&](int index, size_t &length)
+                {
+                    if (ntohl(index) >= ntohl(pTable->count))
+                    {
+                        length = 0;
+                        return nullptr;
+                    }
+
+                    const BOMPointer * pointer = pTable->blockPointers + ntohl(index);
+                    uint32_t addr = ntohl(pointer->address);
+                    length = ntohl(pointer->length);
+                    if (addr > UINT32_MAX - length || fileContent.size() < addr + length)
+                    {
+                        length = 0;
+                        return nullptr;
+                    }
+
+                    return fileContent.data() + addr;
+                }
+            };
+
+            const auto getPaths
+            {
+                [&](int index)
+                {
+                    size_t pathsSize = 0;
+                    auto paths = static_cast<BOMPaths *>(getPointer(index, &pathsSize));
+                    if (paths == nullptr || pathsSize < sizeof(BOMPaths)) {
+                        return nullptr;
+                    }
+
+                    if (pathsSize < ntohs(paths->count) * sizeof(BOMPathIndices)) {
+                        return nullptr;
+                    }
+                    return paths;
+                }
+            };
+
+            const auto generatePathString
+            {
+                [&](const BOMPaths * paths)
+                {
+                    std::map<uint32_t, std::string> filenames;
+                    std::map<uint32_t, uint32_t> parents;
+
+                    while (paths != nullptr)
+                    {
+                        for (unsigned j = 0; j < ntohs(paths->count); j++)
+                        {
+                            uint32_t index0 = paths->indices[j].index0;
+                            uint32_t index1 = paths->indices[j].index1;
+
+                            auto info1 = static_cast<const BOMPathInfo1 *>(getPointer(index0));
+                            if (info1 == nullptr)
+                            {
+                                return;
+                            }
+
+                            auto info2 = static_cast<const BOMPathInfo2 *>(getPointer(info1->index));
+                            if (info2 == nullptr)
+                            {
+                                return;
+                            }
+
+                            // Compute full name using pointer size.
+                            size_t fileSize;
+                            auto file = static_cast<const BOMFile *>(getPointer(index1, &fileSize));
+                            if (file == nullptr || fileSize <= sizeof(BOMFile))
+                            {
+                                return;
+                            }
+                            std::string filename(file->name, fileSize - sizeof(BOMFile));
+                            filename = std::string(filename.c_str());
+
+                            // Maintain a lookup from BOM file index to filename.
+                            filenames[info1->id] = filename;
+                            if (file->parent)
+                            {
+                                parents[info1->id] = file->parent;
+                            }
+
+                            auto it = parents.find(info1->id);
+                            while (it != parents.end())
+                            {
+                                filename = filenames[it->second] + "/" + filename;
+                                it = parents.find(it->second);
+                            }
+
+                            std::cout << "DEBUG. BOM path: " << filename << std::endl;
+
+                            m_bomPaths.push_back(filename);
+                        }
+
+                        if (paths->forward == htonl(0))
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            paths = getPaths(paths->forward);
+                        }
+                    }
+                }
+            };
+
+            size_t varsOffset { 0 };
+            size_t tableOffset { 0 };
+            const BOMHeader * pHeader { nullptr };
+            const BOMBlockTable * pTable { nullptr };
+            const BOMVars * pVars { nullptr };
+
             m_bomPaths.clear();
+
+            std::vector<char> fileContent { Utils::getBinaryContent(filePath) };
+
+            // Check file headers integrity
+            if (fileContent.size() < sizeof(BOMHeader)) {
+                return;
+            }
+
+            pHeader = static_cast<BOMHeader *>(fileContent.data());
+            if (std::string(pHeader->magic, 8) != "BOMStore") {
+                return;
+            }
+
+            if (fileContent.size() < ntohl(pHeader->indexOffset) + sizeof(BOMBlockTable)) {
+                return;
+            }
+
+            pTable = static_cast<BOMBlockTable *>(fileContent.data() + ntohl(pHeader->indexOffset));
+            tableOffset = ntohl(pHeader->indexOffset) + sizeof(BOMBlockTable);
+            if (fileContent.size() < tableOffset + ntohl(pTable->count) * sizeof(BOMPointer)) {
+                return;
+            }
+
+            if (fileContent.size() < ntohl(pHeader->varsOffset) + sizeof(BOMVars)) {
+                return;
+            }
+
+            pVars = static_cast<BOMVars*>(fileContent.data() + ntohl(pHeader->varsOffset));
+            varsOffset = ntohl(pHeader->varsOffset) + sizeof(BOMVars);
+            if (fileContent.size() < varsOffset + ntohl(pVars->count) * sizeof(BOMVar)) {
+                return;
+            }
+
+            // Read only path variables
+            size_t varOffset = 0;
+            for (uint32_t varsIdx = 0; varsIdx < ntohl(pVars->count); varsIdx++)
+            {
+                auto pVar = getVariable(varOffset);
+                if (pVar == nullptr || pVar->name == nullptr)
+                {
+                    break;
+                }
+
+                size_t varSize;
+                const char * pVarData = getPointer(pVar->index, &varSize);
+                if (pVarData == nullptr || varSize < sizeof(BOMTree) || varSize < pVar->length)
+                {
+                    break;
+                }
+
+                std::string varName = std::string(pVar->name, pVar->length);
+                if (varName != "Paths")
+                {
+                    continue;
+                }
+
+                const BOMTree * pTree = static_cast<const BOMTree *>(pVarData);
+                auto pPaths = getPaths(pTree->child);
+                while (pPaths != nullptr && pPaths->isLeaf == htons(0))
+                {
+                    if ((BOMPathIndices *)pPaths->indices == nullptr)
+                    {
+                        break;
+                    }
+                    pPaths = getPaths(pPaths->indices[0].index0);
+                }
+
+                generatePathString(pPaths);
+                break;
+            }
         }
 
         void getPlistData(const std::string& filePath)

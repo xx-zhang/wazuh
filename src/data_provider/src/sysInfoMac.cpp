@@ -45,12 +45,12 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     // { "/Applications", PKG },
     // { "/Library", PKG },
-    // { "/System/Applications", PKG},
-    // { "/System/Library", PKG},
-    // { "/Users", PKG},
-    { "/Library/Apple/System/Library/Receipts", RCP},
-    { "/private/var/db/receipts", RCP},
-    // { "/usr/local/Cellar", BREW}
+    // { "/System/Applications", PKG },
+    // { "/System/Library", PKG },
+    // { "/Users", PKG },
+    { "/Library/Apple/System/Library/Receipts", RCP },
+    { "/private/var/db/receipts", RCP },
+    // { "/usr/local/Cellar", BREW }
 };
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
