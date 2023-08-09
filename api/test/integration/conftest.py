@@ -13,6 +13,7 @@ import requests
 import urllib3
 import yaml
 from py.xml import html
+from git.repo import Repo
 
 global env_mode
 global build
@@ -36,7 +37,7 @@ standalone_env_mode = 'standalone'
 cluster_env_mode = 'cluster'
 
 # parameters for docker environment start and stop
-values_build_env = {
+values_env_build = {
     'interval': 10,
     'max_retries': 3,
 }
@@ -48,17 +49,18 @@ values_env_up = {
 }
 # env_mode : cluster or standalone
 # Indicates the environment to be used in the process.
-env_mode = 'cluster'
-build = True
-last_testsfailed = 0
+env_mode: str = 'cluster'
+build: bool = True
+last_tests_failed = 0
 last_test = None
+
 
 def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker compose build.')
 
 
 def pytest_collection_modifyitems(items: list):
-    """Pytest hook used to add standalone and cluster marks to tests having none of them
+    """Pytest hook used to add standalone and cluster marks to tests having none of them.
 
     Parameters
     ----------
@@ -95,12 +97,13 @@ def pytest_tavern_beta_before_every_test_run(test_dict: dict, variables: dict):
         Parameters
         ----------
         test_dict : list
-            test filename splitted in a list of strings
-        testfailed: int
-            number of tests failed.
-       """
+           Dictionary with test information.
+        variables : dict
+           Dictionary with pytest related variables.
+            
+    """
     global last_test
-    if not last_test :
+    if not last_test:
         last_test = list(filter(lambda x: os.path.basename(x.path) == os.path.basename(variables['request'].path),
                                 variables['request'].session.items))[-1]
         test_filename = os.path.basename(variables['request'].path).split('_')
@@ -111,38 +114,58 @@ def pytest_tavern_beta_before_every_test_run(test_dict: dict, variables: dict):
     
 def pytest_tavern_beta_after_every_test_run(test_dict: dict, variables: dict):
     """Pytest tavern hook function.
-       Cleans up the environment on the last test of each file
+    Clean up the environment on the last test of each file.
 
-        Parameters
-        ----------
-        test_dict : dict
-            test dictionary with test information.
-        variables : dict
-            dictionary with pytest related variables.
+       Parameters
+       ----------
+       test_dict : dict
+           Dictionary with test information.
+       variables : dict
+           Dictionary with pytest related variables.
     """
     global last_test
     if last_test.name == test_dict['test_name']:
         last_test = None
-        global last_testsfailed
-        testsfailed = variables['request'].session.testsfailed - last_testsfailed
-        last_testsfailed = variables['request'].session.testsfailed
+        global last_tests_failed
+        last_tests_failed = variables['request'].session.testsfailed
         test_filename = os.path.basename(variables['request'].path).split('_')
-        clean_up_env(test_filename, testsfailed)
+        tests_failed = variables['request'].session.testsfailed - last_tests_failed
+        clean_up_env(test_filename, tests_failed > 0)
 
-def setup_environment(test_filename: list):
-    """Prepares the environment based on rbac white or black mode.
 
-        Parameters
-        ----------
-        test_filename : list
-            test filename splitted in a list of strings
+def get_module_and_rbac_mode(test_filename: list) -> tuple[str, str]:
+    """Get module and rbac mode from the name of the test file.
+
+    Parameters
+    ----------
+    test_filename : list
+        Test filename splitted in a list of strings.
+
+    Returns
+    -------
+    tuple[str, str]
+        The first element of the tuple is the module name.
+        The second element of the tuple is the rbac mode.
     """
+    rbac_mode = None
     if 'rbac' in test_filename:
         rbac_mode = test_filename[2]
         module = test_filename[3]
     else:
-        rbac_mode = None
         module = test_filename[1]
+
+    return module, rbac_mode
+
+
+def setup_environment(test_filename: list):
+    """Prepare the environment based on rbac white or black mode.
+
+        Parameters
+        ----------
+        test_filename : list
+            Test filename splitted in a list of strings.
+    """
+    module, rbac_mode = get_module_and_rbac_mode(test_filename)
 
     clean_tmp_folder()
 
@@ -156,25 +179,21 @@ def setup_environment(test_filename: list):
     start_containers()
     wait_env_up()
 
-def clean_up_env(test_filename: list, testsfailed: int):
-    """Cleans temporary folder, save environment logs and status,
-       stops and removes all Docker containers.
+
+def clean_up_env(test_filename: list, failed: bool):
+    """Clean temporary folder, save environment logs and status,
+       stop and remove all Docker containers.
 
         Parameters
         ----------
         test_filename : list
-            test filename splitted in a list of strings
-        testfailed: int
-            number of tests failed.
+            Test filename splitted in a list of strings.
+        failed: bool
+            True if some test have failed.
     """
-    if 'rbac' in test_filename:
-        rbac_mode = test_filename[2]
-        module = test_filename[3]
-    else:
-        rbac_mode = None
-        module = test_filename[1]
+    module, rbac_mode = get_module_and_rbac_mode(test_filename)
     clean_tmp_folder()
-    if testsfailed > 0:
+    if failed:
         save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
 
     # Get the environment current status
@@ -182,11 +201,12 @@ def clean_up_env(test_filename: list, testsfailed: int):
     environment_status = get_health()
     down_env()
 
+
 def wait_env_up():
-    """Checks if the environment is up.
+    """Check if the environment is up.
     """
-    values_env_up_retries = 0
-    while values_env_up_retries < values_env_up['max_retries']:
+    env_health_retries = 0
+    while env_health_retries < values_env_up['max_retries']:
         managers_health = check_health(interval=values_env_up['interval'],
                                     only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(interval=values_env_up['interval'], node_type='agent', agents=list(range(1, 9)))
@@ -203,25 +223,23 @@ def wait_env_up():
             time.sleep(values_env_up['interval'])
             return
         else:
-            values_env_up_retries += 1
+            env_health_retries += 1
 
 
 def build_images():
-    """Builds docker images.
-    """
-    from git import Repo
+    """Build Docker images."""
     
     os.chdir(env_path)
     os.makedirs(test_logs_path, exist_ok=True)
     with open(docker_log_path, mode='w') as f_docker:
-        values_build_env_retries = 0
-        while values_build_env_retries < values_build_env['max_retries']:
+        env_build_retries = 0
+        while env_build_retries < values_env_build['max_retries']:
             # get commit hex of the active branch
             repo_path = os.path.abspath(os.path.join(env_path, '..', '..', '..', '..'))
             repo = Repo(repo_path)
-            rama_actual = repo.active_branch
-            commit_actual = rama_actual.commit
-            current_branch = commit_actual.hexsha
+            actual_branch = repo.active_branch
+            actual_commit = actual_branch.commit
+            current_branch = actual_commit.hexsha
             current_process = subprocess.Popen(
                 ["docker", "compose", "--profile", env_mode,
                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", 
@@ -231,22 +249,22 @@ def build_images():
             current_process.wait()
 
             if current_process.returncode == 0:
-                time.sleep(values_build_env['interval'])
+                time.sleep(values_env_build['interval'])
                 break
             else:
-                time.sleep(values_build_env['interval'])
-                values_build_env_retries += 1
+                time.sleep(values_env_build['interval'])
+                env_build_retries += 1
     os.chdir(current_path)
 
 
 def start_containers():
-    """Starts all docker containers.
+    """Start docker containers.
     """
     os.chdir(env_path)
     os.makedirs(test_logs_path, exist_ok=True)
     with open(docker_log_path, mode='a') as f_docker:
-        values_build_env_retries = 0
-        while values_build_env_retries < values_build_env['max_retries']:
+        env_up_retries = 0
+        while env_up_retries < values_env_build['max_retries']:
             current_process = subprocess.Popen(
             ["docker", "compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
             stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
@@ -254,49 +272,49 @@ def start_containers():
 
 
             if current_process.returncode == 0:
-                time.sleep(values_build_env['interval'])
+                time.sleep(values_env_build['interval'])
                 break
             else:
-                time.sleep(values_build_env['interval'])
-                values_build_env_retries += 1
+                time.sleep(values_env_build['interval'])
+                env_up_retries += 1
     os.chdir(current_path)
     return 
 
 
 def down_env():
-    """Stops and remove all Docker containers.
+    """Stop and remove Docker containers.
     """
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        values_build_env_retries = 0
-        while values_build_env_retries < values_build_env['max_retries']:
+        down_env_retries = 0
+        while down_env_retries < values_env_build['max_retries']:
             p = ["docker", "compose", "down", "--remove-orphans", "-t0" ]
             current_process = subprocess.Popen(p, stdout=f_docker,
                                             stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
             if current_process.returncode == 0:
-                time.sleep(values_build_env['interval'])
+                time.sleep(values_env_build['interval'])
                 break
             else:
-                time.sleep(values_build_env['interval'])
-                values_build_env_retries += 1
+                time.sleep(values_env_build['interval'])
+                down_env_retries += 1
 
         # wait for containers to stop
-        while values_build_env_retries < values_build_env['max_retries']:
+        while down_env_retries < values_env_build['max_retries']:
             output = subprocess.check_output("docker ps", shell=True)
             output = output.decode('utf-8')
             if len(output.strip().split('\n')) <= 1:
                 break
             else:
-                time.sleep(values_build_env['interval'])
-                values_build_env_retries += 1
+                time.sleep(values_env_build['interval'])
+                down_env_retries += 1
 
     os.chdir(current_path)
 
 
 def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None,
                  only_check_master_health: bool = False):
-    """Check the Wazuh nodes health.
+    """Check Wazuh nodes health.
 
     Parameters
     ----------
@@ -420,9 +438,9 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     Parameters
     ----------
     module : str
-        Name of the tested module
+        Name of the tested module.
     rbac_mode : str
-        RBAC Mode: Black (by default: all allowed), White (by default: all denied)
+        RBAC Mode: Black (by default: all allowed), White (by default: all denied).
     """
     custom_rbac_path = os.path.join(env_path, 'configurations', 'tmp', 'manager', 'configuration_files',
                                     'custom_rbac_schema.sql')
@@ -449,8 +467,8 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
 
 
 def save_logs(test_name: str):
-    """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
-    Save nginx-lb log.
+    """Save API, cluster and Wazuh logs from every cluster node and Wazuh 
+    logs from every agent. Save nginx-lb log.
 
     Examples:
     "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
@@ -495,8 +513,8 @@ def save_logs(test_name: str):
 
 @pytest.fixture(scope='session', autouse=True)
 def api_test(request: _pytest.fixtures.SubRequest):
-    """Builds the image if the parameter nobuild is not used.
-    The function is execute before all test are run.
+    """Build the image if the parameter nobuild is not used.
+    The function is executed before all the tests are run.
 
     Parameters
     ----------
@@ -513,6 +531,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
     build = request.config.getoption('--nobuild')
     if build:
         build_images()
+
 
 def get_health():
     """Get the current status of the integration environment
