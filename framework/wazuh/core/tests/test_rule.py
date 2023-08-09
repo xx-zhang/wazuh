@@ -123,8 +123,7 @@ def test_load_rules_from_file_unknown(mock_load):
     """Test set_groups rule core function."""
     with pytest.raises(OSError, match='.*[Errno 8].*'):
         rule.load_rules_from_file('unknown.xml', 'tests/data/rules', 'disabled')
-
-
+    
 @pytest.mark.parametrize('tmp_data, parameters, expected_result', [
     ([
          {'filename': 'one.xml', 'status': 'all'},
@@ -181,3 +180,15 @@ def test_set_groups(groups, general_groups):
     rule.set_groups(groups, general_groups, empty_rule)
 
     assert empty_rule == expected_result
+
+@pytest.mark.parametrize('groups, general_groups', [
+    (['\n syslog', 'firewall\r'], ['amazon aws', '\n\r'])
+])
+def test_set_groups_names_format(groups, general_groups):
+    """Test set_groups names formatting."""
+    escaped_chars = ['\n', '\r', ' ']
+    result = {'groups': []}
+    rule.set_groups(groups, general_groups, result)
+
+    for group in result['groups']:
+        assert not any([x in group for x in escaped_chars])

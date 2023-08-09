@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import re
 from enum import Enum
 from glob import glob
 
@@ -88,15 +89,17 @@ def set_groups(groups: list, general_groups: list, rule: dict):
         Rule to be updated.
     """
     groups.extend(general_groups)
-    for g in groups:
+    for group in groups:
+        # These characters are the ones Core replaces when reading XML tags
+        group = re.sub('[\n\r ]+', '', group)
         for req in RULE_REQUIREMENTS:
-            if g.startswith(req):
+            if group.startswith(req):
                 # We add the requirement to the rule
-                rule[req].append(g[len(req) + 1:]) if g[len(req) + 1:] not in rule[req] else None
+                rule[req].append(group[len(req) + 1:]) if group[len(req) + 1:] not in rule[req] else None
                 break
         else:
             # If a requirement is not found we add it to the rule as group
-            rule['groups'].append(g) if g != '' else None
+            rule['groups'].append(group) if group != '' else None
 
 
 def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_status: str) -> list:
@@ -137,6 +140,7 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
         for xml_group in list(root):
             if xml_group.tag.lower() == "group":
                 general_groups = xml_group.attrib['name'].split(',')
+
                 for xml_rule in list(xml_group):
                     # New rule
                     if xml_rule.tag.lower() == "rule":

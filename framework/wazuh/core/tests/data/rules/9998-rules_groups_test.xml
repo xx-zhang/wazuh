@@ -1,0 +1,27 @@
+<group name="\nsyslog,">
+  <rule id="01" level="0" noalert="1">
+    <category>syslog</category>
+    <description>Generic template for all syslog rules.</description>
+  </rule>
+</group>
+
+<group name=" firewall,">
+  <rule id="02" level="0" noalert="1">
+    <category>firewall</category>
+    <description>Generic template for all firewall rules.</description>
+  </rule>
+</group>
+
+<group name="\n \r">
+  <rule id="03" level="0" noalert="1">
+    <category>ids</category>
+    <description>Generic template for all ids rules.</description>
+  </rule>
+</group>
+
+<group name="amazon\n">
+  <rule id="03" level="0" noalert="1">
+    <category>ids</category>
+    <description>Generic template for all ids rules.</description>
+  </rule>
+</group>
