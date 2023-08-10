@@ -29,8 +29,6 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 
-const std::string MAC_APPS_PATH{"/Applications"};
-const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
@@ -46,13 +44,13 @@ static const std::vector<int> s_validFDSock =
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
-    { "/Applications/Utilities", PKG},
-    { "/System/Applications", PKG},
-    { "/System/Applications/Utilities", PKG},
-    { "/System/Library/CoreServices", PKG},
-    { "/private/var/db/receipts", PKG},
-    { "/Library/Apple/System/Library/Receipts", PKG},
-    { "/usr/local/Cellar", BREW}
+    { "/Library", PKG },
+    { "/System/Applications", PKG },
+    { "/System/Library", PKG },
+    { "/Users", PKG },
+    { "/Library/Apple/System/Library/Receipts", RCP },
+    { "/private/var/db/receipts", RCP },
+    { "/usr/local/Cellar", BREW }
 };
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
@@ -101,48 +99,136 @@ nlohmann::json SysInfo::getHardware() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
-    const auto packages { Utils::enumerateDir(pkgDirectory) };
-
-    for (const auto& package : packages)
+    switch (pkgType)
     {
-        if (PKG == pkgType)
-        {
-            if (Utils::endsWith(package, ".app") || Utils::endsWith(package, ".plist"))
+        case PKG:
             {
-                nlohmann::json jsPackage;
-                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                std::function<void(const std::string&)> pkgAnalizeDirectory;
 
-                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                pkgAnalizeDirectory =
+                    [&](const std::string & directory)
                 {
-                    // Only return valid content packages
-                    callback(jsPackage);
-                }
-            }
-        }
-        else if (BREW == pkgType)
-        {
-            if (!Utils::startsWith(package, "."))
-            {
-                const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
+                    const auto subDirectories { Utils::enumerateDir(directory, DT_DIR) };
 
-                for (const auto& version : packageVersions)
-                {
-                    if (!Utils::startsWith(version, "."))
+                    for (const auto& subDirectory : subDirectories)
                     {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                        if ((subDirectory == ".") || (subDirectory == ".."))
+                        {
+                            continue;
+                        }
 
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                        if (Utils::endsWith(subDirectory, ".app") || Utils::endsWith(subDirectory, ".service"))
+                        {
+                            std::string pathInfoPlist { directory + "/" + subDirectory + "/" + PKGWrapper::INFO_PLIST_PATH };
+
+                            if (Utils::existsRegular(pathInfoPlist))
+                            {
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{directory, subDirectory, ""}, PKG))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
+                            }
+                        }
+
+                        std::string pathSubDirectory { directory + "/" + subDirectory };
+                        pkgAnalizeDirectory(pathSubDirectory);
+                    }
+                };
+
+                pkgAnalizeDirectory(pkgDirectory);
+                break;
+            }
+
+        case RCP:
+            {
+                static auto isInPKGDirectory
+                {
+                    [](const std::string & plistDirectory)
+                    {
+                        for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                        {
+                            if (packagesDirectory.second == RCP && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                            {
+                                return false;
+                            }
+                        }
+
+                        for (const auto& packagesDirectory : s_mapPackagesDirectories)
+                        {
+                            if (packagesDirectory.second == PKG && Utils::startsWith(plistDirectory, packagesDirectory.first))
+                            {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    }
+                };
+
+                const auto files { Utils::enumerateDir(pkgDirectory, DT_REG) };
+
+                for (const auto& file : files)
+                {
+                    if (Utils::endsWith(file, ".plist"))
+                    {
+                        std::string package { Utils::substrOnFirstOccurrence(file, ".plist") };
+
+                        nlohmann::json jsPackage;
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, RCP))->buildPackageData(jsPackage);
+
+                        if (!jsPackage.at("name").get_ref<const std::string&>().empty() &&
+                                !jsPackage.at("location").get_ref<const std::string&>().empty() &&
+                                !isInPKGDirectory(jsPackage.at("location").get_ref<const std::string&>())
+                           )
                         {
                             // Only return valid content packages
                             callback(jsPackage);
                         }
                     }
                 }
-            }
-        }
 
-        // else: invalid package
+                break;
+            }
+
+        case BREW:
+            {
+                const auto packages { Utils::enumerateDir(pkgDirectory) };
+
+                for (const auto& package : packages)
+                {
+                    if (!Utils::startsWith(package, "."))
+                    {
+                        const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
+
+                        for (const auto& version : packageVersions)
+                        {
+                            if (!Utils::startsWith(version, "."))
+                            {
+                                nlohmann::json jsPackage;
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+
+                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                {
+                                    // Only return valid content packages
+                                    callback(jsPackage);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                break;
+            }
+
+        default:
+            throw std::runtime_error
+            {
+                "Unsupported pkgType argument"
+            };
     }
 }
 
