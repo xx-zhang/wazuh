@@ -591,11 +591,6 @@ class RCPWrapper final : public IPackageWrapper
                         }
                     }
 
-                    if (m_name.empty() && !m_description.empty())
-                    {
-                        m_name = m_description;
-                    }
-
                     if (!bundleShortVersionString.empty() && Utils::startsWith(bundleVersion, bundleShortVersionString))
                     {
                         m_version = bundleVersion;
