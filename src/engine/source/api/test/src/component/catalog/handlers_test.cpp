@@ -1,37 +1,40 @@
-#include "catalogTestShared.hpp"
-
 #include <api/catalog/handlers.hpp>
 #include <gtest/gtest.h>
-#include <testsCommon.hpp>
+
+#include "../../apiAuxiliarFunctions.hpp"
+#include "catalogTestShared.hpp"
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
+base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
+base::Name completeName({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
+                         successName.parts()[1],
+                         successName.parts()[2]});
+constexpr auto CONTENT_NOT_FOUND {6};
+constexpr auto NAME_OR_TYPE_NOT_FOUND {4};
+constexpr auto FORMAT_NOT_FOUND {5};
 
-class Handlers : public ::testing::Test
+class CatalogGetApiTest : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
 {
-
 protected:
-    void SetUp() override { initLogging(); }
-
-    void TearDown() override {}
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
+    }
+    std::shared_ptr<api::catalog::Catalog> m_spCatalog;
 };
 
-TEST_F(Handlers, resourseGet)
+TEST_P(CatalogGetApiTest, ResourseGet)
 {
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
-
+    auto [input, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(catalog));
-    json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(m_spCatalog));
+    json::Json params {input.c_str()};
 
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})");
+    const auto expectedData = json::Json(output.c_str());
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -41,479 +44,69 @@ TEST_F(Handlers, resourseGet)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(Handlers, resourseGet_Persist)
+INSTANTIATE_TEST_SUITE_P(
+    ResourseGet,
+    CatalogGetApiTest,
+    ::testing::Values(
+        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
+                        R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})"),
+        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
+                        R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})"),
+        std::make_tuple(R"({"name": "decoder/name/ok"})",
+                        R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
+        std::make_tuple(
+            R"({"name": "decoder/name/fail", "format": "json"})",
+            R"({"status":"ERROR","error":"Content 'decoder/name/fail' could not be obtained from store: error"})"),
+        std::make_tuple(R"({"name": "decoder/name/fail", "format": "invalid"})",
+                        R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
+        std::make_tuple(R"({"format": "json"})", R"({"status":"ERROR","error":"Missing /name parameter"})"),
+        std::make_tuple(R"({"name": "invalid", "format": "json"})",
+                        R"({"status":"ERROR","error":"Invalid collection type \"invalid\""})")));
+
+class CatalogPostApiTest
+    : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string, std::string>>
 {
-    api::Handler cmd;
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
+protected:
+    void SetUp() override
     {
-        auto config = getConfig();
-        auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(catalog));
+        initLogging();
+        m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
     }
-    json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})");
+    std::shared_ptr<api::catalog::Catalog> m_spCatalog;
+};
 
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourseGet_MissingName)
+TEST_P(CatalogPostApiTest, ResoursePost)
 {
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
-    json::Json params {R"({"format": "json"})"};
-    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /name parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourseGet_MissingFormat)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
-
-    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
-    json::Json params {fmt::format(R"({{"name": "{}"}})", name.fullName()).c_str()};
-    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing or invalid /format parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourseGet_CatalogError)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     failName.parts()[1],
-                     failName.parts()[2]});
-    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
-    json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
-    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Content 'decoder/name/fail' could not be obtained from store: error"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourseGet_InvalidFormat)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
-    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
-    json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"invalid\"}}", name.fullName()).c_str()};
-    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing or invalid /format parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourseGet_InvalidName)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
-    json::Json params {"{\"name\": \"invalid\", \"format\": \"json\"}"};
-    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Invalid collection type \"invalid\""})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePost)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
+    auto [execution, type, format, content, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(m_spCatalog));
     json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/type");
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
 
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePost_Persist)
-{
-    api::Handler cmd;
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
+    if (execution == NAME_OR_TYPE_NOT_FOUND)
     {
-        auto config = getConfig();
-        auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
+        params.setString(format, "/format");
+        params.setString(content, "/content");
     }
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/type");
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePost_NotCollectionType)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(successName.fullName(), "/type");
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /type parameter or is invalid"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePost_MissingType)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /type parameter or is invalid"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePost_MissingFormat)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/type");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /format parameter or is invalid"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePost_MissingContent)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/type");
-    params.setString("json", "/format");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /content parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePut)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePut_Persist)
-{
-    api::Handler cmd;
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
+    else if (execution == FORMAT_NOT_FOUND)
     {
-        auto config = getConfig();
-        auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
+        params.setString(type, "/type");
+        params.setString(content, "/content");
     }
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePut_Collection)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData =
-        json::Json(R"({"status":"ERROR","error":"Invalid resource type 'collection' for PUT operation"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePut_MissingName)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString("json", "/format");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /name parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePut_MissingFormat)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
-    params.setString(successJson.str(), "/content");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing or invalid /format parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourcePut_MissingContent)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
-    params.setString("json", "/format");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /content parameter"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourceDelete)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
-    ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
-    auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
-                                             << "Actual: " << response.data().prettyStr() << std::endl;
-}
-
-TEST_F(Handlers, resourceDelete_Persist)
-{
-    api::Handler cmd;
-    base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
-                     successName.parts()[1],
-                     successName.parts()[2]});
+    else if (execution == CONTENT_NOT_FOUND)
     {
-        auto config = getConfig();
-        auto catalog = std::make_shared<api::catalog::Catalog>(config);
-
-        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
+        params.setString(type, "/type");
+        params.setString(format, "/format");
     }
-    json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
+    else
+    {
+        params.setString(format, "/format");
+        params.setString(type, "/type");
+        params.setString(content, "/content");
+    }
+
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
+    const auto expectedData = json::Json(output.c_str());
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -523,21 +116,70 @@ TEST_F(Handlers, resourceDelete_Persist)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(Handlers, resourceDelete_Collection)
+INSTANTIATE_TEST_SUITE_P(
+    ResoursePost,
+    CatalogPostApiTest,
+    ::testing::Values(
+        std::make_tuple(1, name.fullName(), "json", successJson.str(), R"({"status":"OK"})"),
+        std::make_tuple(2, name.fullName(), "json", successJson.str(), R"({"status":"OK"})"),
+        std::make_tuple(3,
+                        successName.fullName(),
+                        "json",
+                        successJson.str(),
+                        R"({"status":"ERROR","error":"Missing /type parameter or is invalid"})"),
+        std::make_tuple(
+            4, "", "json", successJson.str(), R"({"status":"ERROR","error":"Missing /type parameter or is invalid"})"),
+        std::make_tuple(5,
+                        name.fullName(),
+                        "",
+                        successJson.str(),
+                        R"({"status":"ERROR","error":"Missing /format parameter or is invalid"})"),
+        std::make_tuple(6, name.fullName(), "json", "", R"({"status":"ERROR","error":"Missing /content parameter"})")));
+
+class CatalogPutApiTest
+    : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string, std::string>>
 {
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
+protected:
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
+    }
+    std::shared_ptr<api::catalog::Catalog> m_spCatalog;
+};
 
-    base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
-
+TEST_P(CatalogPutApiTest, ResoursePost)
+{
+    auto [execution, name, format, content, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(m_spCatalog));
     json::Json params;
-    params.setObject();
-    params.setString(name.fullName(), "/name");
+
+    if (execution == NAME_OR_TYPE_NOT_FOUND)
+    {
+        params.setString(format, "/format");
+        params.setString(content, "/content");
+    }
+    else if (execution == FORMAT_NOT_FOUND)
+    {
+        params.setString(name, "/name");
+        params.setString(content, "/content");
+    }
+    else if (execution == CONTENT_NOT_FOUND)
+    {
+        params.setString(name, "/name");
+        params.setString(format, "/format");
+    }
+    else
+    {
+        params.setString(format, "/format");
+        params.setString(name, "/name");
+        params.setString(content, "/content");
+    }
+
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"OK"})");
+    const auto expectedData = json::Json(output.c_str());
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -547,18 +189,52 @@ TEST_F(Handlers, resourceDelete_Collection)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(Handlers, resourceDelete_MissingName)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
+INSTANTIATE_TEST_SUITE_P(
+    ResoursePut,
+    CatalogPutApiTest,
+    ::testing::Values(
+        std::make_tuple(1, completeName.fullName(), "json", successJson.str(), R"({"status":"OK"})"),
+        std::make_tuple(2, completeName.fullName(), "json", successJson.str(), R"({"status":"OK"})"),
+        std::make_tuple(3,
+                        name.fullName(),
+                        "json",
+                        successJson.str(),
+                        R"({"status":"ERROR","error":"Invalid resource type 'collection' for PUT operation"})"),
+        std::make_tuple(4, "", "json", successJson.str(), R"({"status":"ERROR","error":"Missing /name parameter"})"),
+        std::make_tuple(5,
+                        name.fullName(),
+                        "",
+                        successJson.str(),
+                        R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
+        std::make_tuple(6, name.fullName(), "json", "", R"({"status":"ERROR","error":"Missing /content parameter"})")));
 
+class CatalogDeleteApiTest : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
+{
+protected:
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
+    }
+    std::shared_ptr<api::catalog::Catalog> m_spCatalog;
+};
+
+TEST_P(CatalogDeleteApiTest, ResourseDelete)
+{
+    auto [execution, name, output] = GetParam();
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(m_spCatalog));
     json::Json params;
     params.setObject();
+
+    if (execution != 3)
+    {
+        params.setString(name, "/name");
+    }
+
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /name parameter"})");
+    const auto expectedData = json::Json(output.c_str());
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -568,10 +244,9 @@ TEST_F(Handlers, resourceDelete_MissingName)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(Handlers, registerHandlers)
-{
-    auto config = getConfig();
-    auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    auto api = std::make_shared<api::Api>();
-    ASSERT_NO_THROW(api::catalog::handlers::registerHandlers(catalog, api));
-}
+INSTANTIATE_TEST_SUITE_P(
+    ResourseDelete,
+    CatalogDeleteApiTest,
+    ::testing::Values(std::make_tuple(1, name.fullName(), R"({"status":"OK"})"),
+                      std::make_tuple(2, name.fullName(), R"({"status":"OK"})"),
+                      std::make_tuple(3, "", R"({"status":"ERROR","error":"Missing /name parameter"})")));

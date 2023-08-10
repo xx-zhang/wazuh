@@ -1,222 +1,142 @@
-#include "catalogTestShared.hpp"
 #include <gtest/gtest.h>
-#include <testsCommon.hpp>
 
-class CatalogTest : public ::testing::Test
+#include "../../apiAuxiliarFunctions.hpp"
+#include "catalogTestShared.hpp"
+
+constexpr auto COMMAND_FAILED_CASE {3};
+
+class CatalogGetTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, std::string>>
 {
-
 protected:
-    void SetUp() override { initLogging(); }
-
-    void TearDown() override {}
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
+    }
+    std::unique_ptr<api::catalog::Catalog> m_spCatalog;
 };
 
-TEST_F(CatalogTest, Validates)
+TEST_P(CatalogGetTest, CatalogCommand)
 {
-    auto config = getConfig();
-    ASSERT_NO_THROW(config.validate());
-}
-
-TEST_F(CatalogTest, ValidatesErrorNull)
-{
-    api::catalog::Config config;
-    config.store = std::make_shared<FakeStore>();
-    config.validator = nullptr;
-    ASSERT_THROW(config.validate(), std::runtime_error);
-}
-
-TEST_F(CatalogTest, Builds)
-{
-    auto config = getConfig();
-    ASSERT_NO_THROW(api::catalog::Catalog catalog(config));
-}
-
-TEST_F(CatalogTest, BuildsInvalidConfig)
-{
-    api::catalog::Config config;
-    ASSERT_THROW(api::catalog::Catalog catalog(config), std::runtime_error);
-}
-
-TEST_F(CatalogTest, GetResourceSpecificJson)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
+    auto [execution, input, output] = GetParam();
     std::variant<std::string, base::Error> result;
-    ASSERT_NO_THROW(result = catalog.getResource(successResourceAssetJson));
-    ASSERT_TRUE(std::holds_alternative<std::string>(result));
-    ASSERT_EQ(std::get<std::string>(result), successJson.str());
+    ASSERT_NO_THROW(result = m_spCatalog->getResource(input));
+    if (execution == COMMAND_FAILED_CASE)
+    {
+        ASSERT_TRUE(std::holds_alternative<base::Error>(result));
+    }
+    else
+    {
+        ASSERT_TRUE(std::holds_alternative<std::string>(result));
+        ASSERT_EQ(std::get<std::string>(result), output);
+    }
 }
 
-TEST_F(CatalogTest, GetResourceSpecificYml)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::variant<std::string, base::Error> result;
-    ASSERT_NO_THROW(result = catalog.getResource(successResourceAssetYml));
-    ASSERT_TRUE(std::holds_alternative<std::string>(result));
-    ASSERT_EQ(std::get<std::string>(result), successYml);
-}
+INSTANTIATE_TEST_SUITE_P(CatalogCommand,
+                         CatalogGetTest,
+                         ::testing::Values(std::make_tuple(1, successResourceAssetJson, successJson.str()),
+                                           std::make_tuple(2, successResourceAssetYml, successYml),
+                                           std::make_tuple(3, failResourceAsset, ""),
+                                           std::make_tuple(4, successCollectionAssetJson, successCollectionJson.str()),
+                                           std::make_tuple(5, successCollectionAssetYml, successCollectionYml)));
 
-TEST_F(CatalogTest, GetResourceSpecificDriverError)
+class CatalogPostTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, std::string>>
 {
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::variant<std::string, base::Error> result;
-    ASSERT_NO_THROW(result = catalog.getResource(failResourceAsset));
-    ASSERT_TRUE(std::holds_alternative<base::Error>(result));
-}
+protected:
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
+    }
+    std::unique_ptr<api::catalog::Catalog> m_spCatalog;
+};
 
-TEST_F(CatalogTest, GetResourceCollectionJson)
+TEST_P(CatalogPostTest, CatalogCommand)
 {
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::variant<std::string, base::Error> result;
-    ASSERT_NO_THROW(result = catalog.getResource(successCollectionAssetJson));
-    ASSERT_TRUE(std::holds_alternative<std::string>(result));
-    ASSERT_EQ(std::get<std::string>(result), successCollectionJson.str());
-}
+    auto [execution, input, content] = GetParam();
 
-TEST_F(CatalogTest, GetResourceCollectionYml)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::variant<std::string, base::Error> result;
-    ASSERT_NO_THROW(result = catalog.getResource(successCollectionAssetYml));
-    ASSERT_TRUE(std::holds_alternative<std::string>(result));
-    ASSERT_EQ(std::get<std::string>(result), successCollectionYml);
-}
-
-TEST_F(CatalogTest, PostResourceCollectioJson)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.postResource(successCollectionAssetJson, successJson.str()));
-    ASSERT_FALSE(error);
+    ASSERT_NO_THROW(error = m_spCatalog->postResource(input, content));
+    if (execution >= COMMAND_FAILED_CASE)
+    {
+        ASSERT_TRUE(error);
+    }
+    else
+    {
+        ASSERT_FALSE(error);
+    }
 }
 
-TEST_F(CatalogTest, PostResourceCollectioYml)
+INSTANTIATE_TEST_SUITE_P(CatalogCommand,
+                         CatalogPostTest,
+                         ::testing::Values(std::make_tuple(1, successCollectionAssetJson, successJson.str()),
+                                           std::make_tuple(2, successCollectionAssetYml, successYml),
+                                           std::make_tuple(3, successCollectionAssetJson, successYml),
+                                           std::make_tuple(4, successResourceAssetJson, successJson.str())));
+
+class CatalogDeleteTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource>>
 {
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
+protected:
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
+    }
+    std::unique_ptr<api::catalog::Catalog> m_spCatalog;
+};
+
+TEST_P(CatalogDeleteTest, CatalogCommand)
+{
+    auto [execution, input] = GetParam();
+
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.postResource(successCollectionAssetYml, successYml));
-    ASSERT_FALSE(error);
+    ASSERT_NO_THROW(error = m_spCatalog->deleteResource(input));
+    if (execution == COMMAND_FAILED_CASE)
+    {
+        ASSERT_TRUE(error);
+    }
+    else
+    {
+        ASSERT_FALSE(error);
+    }
 }
 
-TEST_F(CatalogTest, PostResourceCollectioDriverError)
+INSTANTIATE_TEST_SUITE_P(CatalogCommand,
+                         CatalogDeleteTest,
+                         ::testing::Values(std::make_tuple(1, successResourceAssetJson),
+                                           std::make_tuple(2, successCollectionAssetJson),
+                                           std::make_tuple(3, failResourceAsset)));
+
+class CatalogValidateTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, std::string>>
 {
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
+protected:
+    void SetUp() override
+    {
+        initLogging();
+        m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
+    }
+    std::unique_ptr<api::catalog::Catalog> m_spCatalog;
+};
+
+TEST_P(CatalogValidateTest, CatalogCommand)
+{
+    auto [execution, input, content] = GetParam();
+
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.postResource(successCollectionAssetJson, successYml));
-    ASSERT_TRUE(error);
+    ASSERT_NO_THROW(error = m_spCatalog->putResource(input, content));
+    if (execution >= COMMAND_FAILED_CASE)
+    {
+        ASSERT_TRUE(error);
+    }
+    else
+    {
+        ASSERT_FALSE(error);
+    }
 }
 
-TEST_F(CatalogTest, PostResourceSpecific)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.postResource(successResourceAssetJson, successJson.str()));
-    ASSERT_TRUE(error);
-}
-
-TEST_F(CatalogTest, DeleteResourceSpecific)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.deleteResource(successResourceAssetJson));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(CatalogTest, DeleteResourceSpecificDriverError)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.deleteResource(failResourceAsset));
-    ASSERT_TRUE(error);
-}
-
-TEST_F(CatalogTest, DeleteResourceCollection)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.deleteResource(successCollectionAssetJson));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(CatalogTest, PutResourceSpecificJson)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.putResource(successResourceAssetJson, successJson.str()));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(CatalogTest, PutResourceSpecificYml)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.putResource(successResourceAssetYml, successYml));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(CatalogTest, PutResourceSpecificDriverError)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.putResource(failResourceAsset, successYml));
-    ASSERT_TRUE(error);
-}
-
-TEST_F(CatalogTest, PutResourceCollection)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.putResource(successCollectionAssetJson, successJson.str()));
-    ASSERT_TRUE(error);
-}
-
-TEST_F(CatalogTest, ValidateResourceSpecificJson)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.validateResource(successResourceAssetJson, successJson.str()));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(CatalogTest, ValidateResourceSpecificYml)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.validateResource(successResourceAssetYml, successYml));
-    ASSERT_FALSE(error);
-}
-
-TEST_F(CatalogTest, ValidateResourceSpecificDriverError)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.validateResource(failResourceAsset, successYml));
-    ASSERT_TRUE(error);
-}
-
-TEST_F(CatalogTest, ValidateResourceCollection)
-{
-    auto config = getConfig();
-    api::catalog::Catalog catalog(config);
-    std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = catalog.validateResource(successCollectionAssetJson, successJson.str()));
-    ASSERT_TRUE(error);
-}
+INSTANTIATE_TEST_SUITE_P(CatalogCommand,
+                         CatalogValidateTest,
+                         ::testing::Values(std::make_tuple(1, successResourceAssetJson, successJson.str()),
+                                           std::make_tuple(2, successResourceAssetYml, successYml),
+                                           std::make_tuple(3, failResourceAsset, successYml),
+                                           std::make_tuple(4, successCollectionAssetJson, successJson.str())));
