@@ -140,7 +140,6 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
         for xml_group in list(root):
             if xml_group.tag.lower() == "group":
                 general_groups = xml_group.attrib['name'].split(',')
-
                 for xml_rule in list(xml_group):
                     # New rule
                     if xml_rule.tag.lower() == "rule":
