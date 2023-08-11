@@ -1,13 +1,18 @@
 import os
-
 import pytest
-from wazuh_testing import T_20, TEMPLATE_DIR, TEST_CASES_DIR, global_parameters
+
+# qa-integration-framework imports
+from wazuh_testing import session_parameters
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
 from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.modules.aws.db_utils import s3_db_exists
-from wazuh_testing.tools.configuration import (
+from wazuh_testing.utils.configuration import (
     get_test_cases_data,
     load_configuration_template,
 )
+from wazuh_testing.modules.aws.db_utils import s3_db_exists
+
+# Local module imports
+from .utils import ERROR_MESSAGES, TIMEOUTS
 
 pytestmark = [pytest.mark.server]
 
@@ -18,7 +23,7 @@ TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
 TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
 
-# ---------------------------------------------------- TEST_PATH -------------------------------------------------------
+# -----------------------------------------opvb----------- TEST_PATH -------------------------------------------------------
 configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_discard_regex.yaml')
 cases_path = os.path.join(TEST_CASES_PATH, 'cases_discard_regex.yaml')
 
@@ -117,26 +122,32 @@ def test_discard_regex(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_20,
+        timeout=TIMEOUTS[20],
         callback=event_monitor.callback_detect_event_processed_or_skipped(pattern),
-        error_message=(
-            'The AWS module did not show the correct message about discard regex or ',
-            'did not process the expected amount of logs'
-        ),
-        accum_results=found_logs + skipped_logs
-    ).result()
+        accumulations=found_logs + skipped_logs
+    )
 
     assert s3_db_exists()
+
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']

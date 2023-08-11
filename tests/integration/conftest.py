@@ -135,11 +135,6 @@ def load_wazuh_basic_configuration():
     configuration.write_wazuh_conf(backup_ossec_configuration)
 
 
-import pydevd_pycharm
-
-pydevd_pycharm.settrace('172.18.0.1', port=55555, stdoutToServer=True, stderrToServer=True)
-
-
 @pytest.fixture()
 def set_wazuh_configuration(configuration: dict) -> None:
     """Set wazuh configuration
@@ -162,7 +157,7 @@ def set_wazuh_configuration(configuration: dict) -> None:
     yield
 
     # Restore previous configuration
-    configuration.write_wazuh_conf(backup_config)
+    wazuh_configuration.write_wazuh_conf(backup_config)
 
 
 @pytest.fixture()

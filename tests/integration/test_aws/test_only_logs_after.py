@@ -1,8 +1,10 @@
 import os
+import pytest
 from datetime import datetime
 
-import pytest
-from wazuh_testing import T_10, T_20, TEMPLATE_DIR, TEST_CASES_DIR, global_parameters
+# qa-integration-framework imports
+from wazuh_testing import session_parameters
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
 from wazuh_testing.modules import aws as cons
 from wazuh_testing.modules.aws import ONLY_LOGS_AFTER_PARAM, event_monitor, local_internal_options  # noqa: F401
 from wazuh_testing.modules.aws.cli_utils import call_aws_module
@@ -18,10 +20,12 @@ from wazuh_testing.modules.aws.db_utils import (
     services_db_exists,
 )
 from wazuh_testing.modules.aws.s3_utils import get_last_file_key, upload_file
-from wazuh_testing.tools.configuration import (
+from wazuh_testing.utils.configuration import (
     get_test_cases_data,
     load_configuration_template,
 )
+
+from .utils import ERROR_MESSAGES, TIMEOUTS
 
 pytestmark = [pytest.mark.server]
 
@@ -126,24 +130,27 @@ def test_bucket_without_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_event_processed,
-        error_message='The AWS module did not process the expected number of events',
-        accum_results=expected_results
-    ).result()
+        accumulations=expected_results
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
     assert s3_db_exists()
 
@@ -151,6 +158,14 @@ def test_bucket_without_only_logs_after(
 
     assert bucket_name in data.bucket_path
     assert metadata['uploaded_file'] == data.log_key
+
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # -------------------------------------------- TEST_SERVICE_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
@@ -242,23 +257,27 @@ def test_service_without_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_10,
-        callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
-        error_message='The AWS module did not process the expected number of events',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_event_processed,
+        accumulations=expected_results
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
     assert services_db_exists()
 
@@ -266,6 +285,14 @@ def test_service_without_only_logs_after(
 
     assert log_group_name == data.aws_log_group
     assert metadata['log_stream'] == data.aws_log_stream
+
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # --------------------------------------------- TEST_BUCKET_WITH_ONLY_LOGS_AFTER ---------------------------------------
@@ -360,24 +387,27 @@ def test_bucket_with_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_20,
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_event_processed,
-        accum_results=expected_results,
-        error_message='The AWS module did not process the expected number of events',
-    ).result()
+        accumulations=expected_results
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
     assert s3_db_exists()
 
@@ -387,6 +417,13 @@ def test_bucket_with_only_logs_after(
             datetime.strptime(only_logs_after, '%Y-%b-%d') < datetime.strptime(str(row.created_date), '%Y%m%d')
         )
 
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 # --------------------------------------------TEST_CLOUDWATCH_WITH_ONLY_LOGS_AFTER -------------------------------------
 t4_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'cloudwatch_configuration_with_only_logs_after.yaml')
@@ -480,23 +517,27 @@ def test_cloudwatch_with_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_10,
-        callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
-        error_message='The AWS module did not process the expected number of events',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_event_processed,
+        accumulations=expected_results
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
     assert services_db_exists()
 
@@ -504,6 +545,14 @@ def test_cloudwatch_with_only_logs_after(
 
     assert log_group_name == data.aws_log_group
     assert metadata['log_stream'] == data.aws_log_stream
+
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
 
 
 # ------------------------------------------ TEST_INSPECTOR_WITH_ONLY_LOGS_AFTER ---------------------------------------
@@ -596,23 +645,27 @@ def test_inspector_with_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_10,
-        callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
-        error_message='The AWS module did not process the expected number of events',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_event_processed,
+        accumulations=expected_results
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
     assert services_db_exists()
 
