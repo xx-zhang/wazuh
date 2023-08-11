@@ -123,7 +123,8 @@ def test_load_rules_from_file_unknown(mock_load):
     """Test set_groups rule core function."""
     with pytest.raises(OSError, match='.*[Errno 8].*'):
         rule.load_rules_from_file('unknown.xml', 'tests/data/rules', 'disabled')
-    
+
+
 @pytest.mark.parametrize('tmp_data, parameters, expected_result', [
     ([
          {'filename': 'one.xml', 'status': 'all'},
