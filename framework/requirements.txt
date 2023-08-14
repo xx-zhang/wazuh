@@ -1,3 +1,9 @@
+# coding:utf-8
+#--trusted-host mirrors.aliyun.com --index-url http://mirrors.aliyun.com/pypi/simple/
+#--trusted-host https://repo.huaweicloud.com -i https://repo.huaweicloud.com/repository/pypi/simple
+# --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+--trusted-host https://mirrors.tencent.com -i https://mirrors.tencent.com/pypi/simple
+
 aiohttp==3.8.1
 aiohttp-cache==2.2.0
 aiohttp-cors==0.7.0

@@ -104,7 +104,7 @@ src/win32/REVISION
 .settings/
 
 # Visual Studio Code files
-.vscode
+# .vscode
 
 # temporary vim files
 *.swp
